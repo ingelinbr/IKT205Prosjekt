@@ -15,6 +15,7 @@
     "@react-navigation/native-stack": "^7.14.11",
     "@supabase/supabase-js": "^2.104.0",
     "expo": "~54.0.34",
+    "expo-crypto": "~15.0.9",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
+    "supabase": "^2.95.5",
     "typescript": "~5.9.2"
   },
   "private": true

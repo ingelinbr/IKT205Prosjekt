@@ -1,51 +1,56 @@
-import { useState } from 'react';
-import { SafeAreaView, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
-import { validatePin } from '../services/pinService';
+import React, { useEffect, useState } from "react";
+import * as SecureStore from "expo-secure-store";
+import { supabase } from "../lib/supabase"; // juster path hvis nødvendig
+import { View, ActivityIndicator, StyleSheet } from "react-native";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PinLogin'>;
+export default function AuthGateScreen({ navigation }: any) {
+  const [loading, setLoading] = useState(true);
 
-export default function PinLoginScreen({ navigation }: Props) {
-  const [pin, setPin] = useState('');
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
-  async function handlePinLogin() {
-    const isValid = await validatePin(pin);
+  const checkAuth = async () => {
+    try {
+      // 1. Sjekk om bruker er logget inn
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-    if (!isValid) {
-      Alert.alert('Feil PIN', 'PIN-koden er ikke riktig.');
-      setPin('');
-      return;
+      if (!session) {
+        navigation.replace("Login");
+        return;
+      }
+
+      // 2. Sjekk om PIN finnes
+      const storedPin = await SecureStore.getItemAsync("user_pin");
+
+      if (storedPin) {
+        navigation.replace("PinLogin");
+      } else {
+        navigation.replace("CreatePin");
+      }
+    } catch (error) {
+      console.error("AuthGate error:", error);
+      navigation.replace("Login");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    navigation.replace('Main', { username: 'Bruker' });
-  }
-
+  // Loader mens vi sjekker
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Logg inn med PIN</Text>
-
-      <TextInput
-        style={styles.input}
-        value={pin}
-        onChangeText={setPin}
-        placeholder="PIN"
-        keyboardType="number-pad"
-        secureTextEntry
-        maxLength={4}
-      />
-
-      <Pressable style={styles.button} onPress={handlePinLogin}>
-        <Text style={styles.buttonText}>Logg inn</Text>
-      </Pressable>
-
-      <Pressable onPress={() => navigation.replace('Login')}>
-        <Text style={styles.link}>Logg inn med e-post i stedet</Text>
-      </Pressable>
-    </SafeAreaView>
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <ActivityIndicator size="large" />
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

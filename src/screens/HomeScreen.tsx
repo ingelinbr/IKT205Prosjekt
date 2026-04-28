@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   View,
@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Pressable,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
 export default function HomeScreen({ navigation }: any) {
@@ -13,53 +14,52 @@ export default function HomeScreen({ navigation }: any) {
   const [points, setPoints] = useState(0);
   const [rank, setRank] = useState<number | null>(null);
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, [])
+  );
 
   async function loadUserData() {
     const { data: userData } = await supabase.auth.getUser();
 
     if (!userData.user) return;
 
-    // Hent navn
+    const userId = userData.user.id;
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('username')
-      .eq('id', userData.user.id)
+      .eq('id', userId)
       .single();
 
     if (profile?.username) {
       setUsername(profile.username.split(' ')[0]);
     }
 
-    // Hent egne poeng
-    const { data: predictions } = await supabase
+    const { data: predictions, error } = await supabase
       .from('predictions')
-      .select('points');
+      .select('user_id, points');
 
-    const myPoints =
-      predictions
-        ?.filter((p: any) => p.user_id === userData.user.id)
-        .reduce((sum: number, p: any) => sum + (p.points ?? 0), 0) ?? 0;
+    if (error) {
+      console.log('Error loading home points:', error.message);
+      return;
+    }
 
-    setPoints(myPoints);
-
-    // Beregn rank (global)
     const scores: Record<string, number> = {};
 
     predictions?.forEach((p: any) => {
       scores[p.user_id] = (scores[p.user_id] || 0) + (p.points ?? 0);
     });
 
+    setPoints(scores[userId] ?? 0);
+
     const sorted = Object.entries(scores)
       .sort((a, b) => b[1] - a[1])
-      .map(([user_id]) => user_id);
+      .map(([id]) => id);
 
-    const position = sorted.indexOf(userData.user.id);
-    if (position !== -1) {
-      setRank(position + 1);
-    }
+    const position = sorted.indexOf(userId);
+    setRank(position !== -1 ? position + 1 : null);
   }
 
   return (
@@ -89,7 +89,7 @@ export default function HomeScreen({ navigation }: any) {
           style={styles.button}
           onPress={() => navigation.navigate('Leaderboard')}
         >
-          <Text style={styles.buttonText}>Leaderboard</Text>
+          <Text style={styles.buttonText}>Toppliste</Text>
         </Pressable>
 
         <Pressable

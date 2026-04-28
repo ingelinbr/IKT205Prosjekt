@@ -1,10 +1,12 @@
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from "expo-secure-store";
+import { hashPin } from "../utils/pinUtils";
 
-const PIN_KEY = 'user_pin';
-const LOGGED_IN_EMAIL_KEY = 'logged_in_email';
+const PIN_KEY = "user_pin";
+const LOGGED_IN_EMAIL_KEY = "logged_in_email";
 
 export async function savePin(pin: string) {
-  await SecureStore.setItemAsync(PIN_KEY, pin);
+  const hashedPin = await hashPin(pin);
+  await SecureStore.setItemAsync(PIN_KEY, hashedPin);
 }
 
 export async function getPin() {
@@ -18,7 +20,10 @@ export async function hasPin() {
 
 export async function validatePin(pin: string) {
   const savedPin = await getPin();
-  return savedPin === pin;
+  if (!savedPin) return false;
+
+  const hashedInput = await hashPin(pin);
+  return savedPin === hashedInput;
 }
 
 export async function saveLoggedInEmail(email: string) {

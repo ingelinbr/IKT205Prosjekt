@@ -22,8 +22,27 @@ export default function LeagueDetailScreen({ route }: any) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadLeagueLeaderboard();
-  }, []);
+  loadLeagueLeaderboard();
+
+  const channel = supabase
+    .channel(`league-leaderboard-${leagueId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'predictions',
+      },
+      () => {
+        loadLeagueLeaderboard();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
   async function loadLeagueLeaderboard() {
     setLoading(true);

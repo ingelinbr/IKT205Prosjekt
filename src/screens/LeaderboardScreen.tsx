@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   Text,
@@ -7,6 +7,7 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
 type LeaderboardUser = {
@@ -19,13 +20,32 @@ export default function LeaderboardScreen() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadLeaderboard();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadLeaderboard();
+
+      const channel = supabase
+        .channel('leaderboard-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'predictions',
+          },
+          () => {
+            loadLeaderboard();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [])
+  );
 
   async function loadLeaderboard() {
-    setLoading(true);
-
     const { data: predictions, error: predictionError } = await supabase
       .from('predictions')
       .select('user_id, points');

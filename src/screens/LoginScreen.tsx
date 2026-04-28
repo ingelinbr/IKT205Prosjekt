@@ -22,57 +22,62 @@ export default function LoginScreen({ navigation }: Props) {
   const [password, setPassword] = useState('');
 
   const handleSignIn = async () => {
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
+  const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
 
-    if (!trimmedEmail || !trimmedPassword) {
-      Alert.alert('Feil', 'Fyll inn både e-post og passord.');
-      return;
-    }
+  if (!trimmedEmail || !trimmedPassword) {
+    Alert.alert('Feil', 'Fyll inn både e-post og passord.');
+    return;
+  }
 
-    const { data, error } = await signIn(trimmedEmail, trimmedPassword);
+  const { data, error } = await signIn(trimmedEmail, trimmedPassword);
 
-    if (error) {
-      Alert.alert('Innlogging feilet', error.message);
-      return;
-    }
+  if (error) {
+    Alert.alert('Innlogging feilet', error.message);
+    return;
+  }
 
-    const displayName = data.user?.user_metadata?.username || 'Bruker';
-    navigation.replace('Home', { username: displayName });
-  };
+  const displayName = data.user?.user_metadata?.username || 'Bruker';
+
+  navigation.replace('CreatePin', { username: displayName });
+};
 
   const handleSignUp = async () => {
-    const trimmedUsername = username.trim();
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
+  const trimmedUsername = username.trim();
+  const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
 
-    if (!trimmedUsername || !trimmedEmail || !trimmedPassword) {
-      Alert.alert('Feil', 'Fyll inn navn, e-post og passord.');
-      return;
-    }
+  if (!trimmedUsername || !trimmedEmail || !trimmedPassword) {
+    Alert.alert('Feil', 'Fyll inn fornavn, e-post og passord.');
+    return;
+  }
 
-    if (trimmedPassword.length < 6) {
-      Alert.alert('Feil', 'Passord må være minst 6 tegn.');
-      return;
-    }
+  if (trimmedPassword.length < 6) {
+    Alert.alert('Feil', 'Passord må være minst 6 tegn.');
+    return;
+  }
 
-    const { error } = await signUp(trimmedEmail, trimmedPassword, trimmedUsername);
+  const { error } = await signUp(
+    trimmedEmail,
+    trimmedPassword,
+    trimmedUsername
+  );
 
-    if (error) {
-      Alert.alert('Registrering feilet', error.message);
-      return;
-    }
+  if (error) {
+    Alert.alert('Registrering feilet', error.message);
+    return;
+  }
 
-    Alert.alert(
-      'Bruker opprettet',
-      'Sjekk e-posten din og bekreft kontoen før du logger inn.'
-    );
+  Alert.alert(
+    'Bruker opprettet',
+    'Sjekk e-posten din og logg inn. Etter innlogging lager du PIN.'
+  );
 
-    setUsername('');
-    setEmail('');
-    setPassword('');
-    setIsRegisterMode(false);
-  };
+  setUsername('');
+  setEmail('');
+  setPassword('');
+  setIsRegisterMode(false);
+};
 
   return (
     <KeyboardAvoidingView
@@ -88,7 +93,7 @@ export default function LoginScreen({ navigation }: Props) {
         {isRegisterMode && (
           <TextInput
             style={styles.input}
-            placeholder="Navn"
+            placeholder="Fornavn"
             placeholderTextColor="#A06A85"
             value={username}
             onChangeText={setUsername}
@@ -137,7 +142,7 @@ export default function LoginScreen({ navigation }: Props) {
 
         <Text style={styles.note}>
           {isRegisterMode
-            ? 'Fyll inn navn, e-post og passord for å opprette bruker.'
+            ? 'Etter registrering lager du en PIN-kode.'
             : 'Bruk e-post og passord for å logge inn.'}
         </Text>
       </View>

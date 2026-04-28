@@ -1,20 +1,109 @@
-import { SafeAreaView, View, Text, StyleSheet } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../navigation/AppNavigator';
+import { useEffect, useState } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+} from 'react-native';
+import { supabase } from '../lib/supabase';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+export default function HomeScreen({ navigation }: any) {
+  const [username, setUsername] = useState('Bruker');
+  const [points, setPoints] = useState(0);
+  const [rank, setRank] = useState<number | null>(null);
 
-export default function HomeScreen({ route }: Props) {
-  const username = route.params?.username?.trim() || 'Bruker';
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  async function loadUserData() {
+    const { data: userData } = await supabase.auth.getUser();
+
+    if (!userData.user) return;
+
+    // Hent navn
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', userData.user.id)
+      .single();
+
+    if (profile?.username) {
+      setUsername(profile.username.split(' ')[0]);
+    }
+
+    // Hent egne poeng
+    const { data: predictions } = await supabase
+      .from('predictions')
+      .select('points');
+
+    const myPoints =
+      predictions
+        ?.filter((p: any) => p.user_id === userData.user.id)
+        .reduce((sum: number, p: any) => sum + (p.points ?? 0), 0) ?? 0;
+
+    setPoints(myPoints);
+
+    // Beregn rank (global)
+    const scores: Record<string, number> = {};
+
+    predictions?.forEach((p: any) => {
+      scores[p.user_id] = (scores[p.user_id] || 0) + (p.points ?? 0);
+    });
+
+    const sorted = Object.entries(scores)
+      .sort((a, b) => b[1] - a[1])
+      .map(([user_id]) => user_id);
+
+    const position = sorted.indexOf(userData.user.id);
+    if (position !== -1) {
+      setRank(position + 1);
+    }
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Hei, {username}</Text>
 
       <View style={styles.card}>
-        <Text style={styles.text}>Velkommen til Premier League Predictor!</Text>
+        <Text style={styles.cardTitle}>Dine poeng</Text>
+        <Text style={styles.bigNumber}>{points}</Text>
+
+        {rank && (
+          <Text style={styles.subText}>Global plassering: #{rank}</Text>
+        )}
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Hva vil du gjøre?</Text>
+
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('MatchesTab')}
+        >
+          <Text style={styles.buttonText}>Se kamper</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('Leaderboard')}
+        >
+          <Text style={styles.buttonText}>Leaderboard</Text>
+        </Pressable>
+
+        <Pressable
+          style={styles.button}
+          onPress={() => navigation.navigate('LeaguesTab')}
+        >
+          <Text style={styles.buttonText}>Ligaer</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Om appen</Text>
         <Text style={styles.text}>
-          Her kan du tippe kamper og konkurrere med venner.
+          Prediker Premier League-kamper, få poeng og konkurrer med venner.
         </Text>
       </View>
     </SafeAreaView>
@@ -32,22 +121,43 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     color: '#5A2A40',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   card: {
     backgroundColor: '#FFE4EC',
     borderRadius: 24,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    padding: 20,
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#5A2A40',
+    marginBottom: 10,
+  },
+  bigNumber: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: '#5A2A40',
   },
   text: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#A06A85',
-    marginBottom: 10,
-    lineHeight: 22,
+  },
+  subText: {
+    fontSize: 14,
+    color: '#A06A85',
+    marginTop: 6,
+  },
+  button: {
+    backgroundColor: '#5A2A40',
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });

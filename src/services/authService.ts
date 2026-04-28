@@ -8,7 +8,7 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signUp(email: string, password: string, username: string) {
-  return supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -17,6 +17,25 @@ export async function signUp(email: string, password: string, username: string) 
       },
     },
   });
+
+  if (error) {
+    return { data, error };
+  }
+
+  if (data.user) {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: data.user.id,
+        username,
+      });
+
+    if (profileError) {
+      return { data, error: profileError };
+    }
+  }
+
+  return { data, error: null };
 }
 
 export async function signOut() {

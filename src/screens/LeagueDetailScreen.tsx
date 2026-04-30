@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   SafeAreaView,
   Text,
@@ -7,7 +7,9 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { updateUserPredictionPoints } from '../services/predictionScoring';
 
 type UserScore = {
   user_id: string;
@@ -21,31 +23,40 @@ export default function LeagueDetailScreen({ route }: any) {
   const [leaderboard, setLeaderboard] = useState<UserScore[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-  loadLeagueLeaderboard();
+  useFocusEffect(
+    useCallback(() => {
+      loadLeagueLeaderboard();
 
-  const channel = supabase
-    .channel(`league-leaderboard-${leagueId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'predictions',
-      },
-      () => {
-        loadLeagueLeaderboard();
-      }
-    )
-    .subscribe();
+      const channel = supabase
+        .channel(`league-leaderboard-${leagueId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'predictions',
+          },
+          () => {
+            loadLeagueLeaderboard();
+          }
+        )
+        .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, []);
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [leagueId])
+  );
 
   async function loadLeagueLeaderboard() {
     setLoading(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUser = authData.user;
+
+    if (currentUser) {
+      await updateUserPredictionPoints(currentUser.id);
+    }
 
     const { data: members, error: memberError } = await supabase
       .from('league_members')
@@ -77,10 +88,14 @@ export default function LeagueDetailScreen({ route }: any) {
       return;
     }
 
-    const { data: profiles } = await supabase
+    const { data: profiles, error: profileError } = await supabase
       .from('profiles')
       .select('id, username')
       .in('id', userIds);
+
+    if (profileError) {
+      console.log('Error loading profiles:', profileError.message);
+    }
 
     const profileMap: Record<string, string> = {};
 

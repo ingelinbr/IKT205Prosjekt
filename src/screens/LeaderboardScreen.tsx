@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { updateUserPredictionPoints } from '../services/predictionScoring';
 
 type LeaderboardUser = {
   user_id: string;
@@ -46,6 +47,15 @@ export default function LeaderboardScreen() {
   );
 
   async function loadLeaderboard() {
+    setLoading(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUser = authData.user;
+
+    if (currentUser) {
+      await updateUserPredictionPoints(currentUser.id);
+    }
+
     const { data: predictions, error: predictionError } = await supabase
       .from('predictions')
       .select('user_id, points');

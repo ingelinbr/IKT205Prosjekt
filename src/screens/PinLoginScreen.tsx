@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { SafeAreaView, Text, TextInput, Pressable, StyleSheet, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import { validatePin } from '../services/pinService';
+import { getPinLockTimeLeft, validatePin } from '../services/pinService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PinLogin'>;
 
@@ -10,16 +10,38 @@ export default function PinLoginScreen({ navigation }: Props) {
   const [pin, setPin] = useState('');
 
   async function handlePinLogin() {
-    const isValid = await validatePin(pin);
+  const timeLeft = await getPinLockTimeLeft();
 
-    if (!isValid) {
+  if (timeLeft > 0) {
+    const minutesLeft = Math.ceil(timeLeft / 60000);
+
+    Alert.alert(
+      'PIN låst',
+      `For mange feil forsøk. Prøv igjen om ${minutesLeft} minutt.`
+    );
+    return;
+  }
+
+  const isValid = await validatePin(pin);
+
+  if (!isValid) {
+    const newTimeLeft = await getPinLockTimeLeft();
+
+    if (newTimeLeft > 0) {
+      Alert.alert(
+        'PIN låst',
+        'For mange feil forsøk. Prøv igjen om 5 minutter.'
+      );
+    } else {
       Alert.alert('Feil PIN', 'PIN-koden er ikke riktig.');
-      setPin('');
-      return;
     }
 
-    navigation.replace('Main', { username: 'Bruker' });
+    setPin('');
+    return;
   }
+
+  navigation.replace('Main', { username: 'Bruker' });
+}
 
   return (
     <SafeAreaView style={styles.container}>

@@ -61,7 +61,6 @@ export default function LeaderboardScreen() {
       .select('user_id, points');
 
     if (predictionError) {
-      console.log('Error loading leaderboard:', predictionError.message);
       setLoading(false);
       return;
     }
@@ -86,7 +85,6 @@ export default function LeaderboardScreen() {
       .in('id', userIds);
 
     if (profileError) {
-      console.log('Error loading profiles:', profileError.message);
     }
 
     const profileMap: Record<string, string> = {};

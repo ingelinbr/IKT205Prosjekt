@@ -7,11 +7,6 @@ export const fetchMatches = async () => {
 
     const data = await res.json();
 
-    console.log(
-      "NEXT matches:",
-      Array.isArray(data) ? data.length : data
-    );
-
     if (!Array.isArray(data)) {
       return [];
     }

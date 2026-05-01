@@ -64,7 +64,6 @@ export default function LeagueDetailScreen({ route }: any) {
       .eq('league_id', leagueId);
 
     if (memberError) {
-      console.log('Error loading members:', memberError.message);
       setLoading(false);
       return;
     }
@@ -83,7 +82,6 @@ export default function LeagueDetailScreen({ route }: any) {
       .in('user_id', userIds);
 
     if (predictionError) {
-      console.log('Error loading predictions:', predictionError.message);
       setLoading(false);
       return;
     }
@@ -94,7 +92,6 @@ export default function LeagueDetailScreen({ route }: any) {
       .in('id', userIds);
 
     if (profileError) {
-      console.log('Error loading profiles:', profileError.message);
     }
 
     const profileMap: Record<string, string> = {};

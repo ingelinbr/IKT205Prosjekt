@@ -31,7 +31,6 @@ export async function updateUserPredictionPoints(userId: string) {
     const matches = await fetchAllSeasonMatches();
     return await updateFinishedMatchPointsForUser(userId, matches);
   } catch (error: any) {
-    console.log('Error updating prediction points:', error.message ?? error);
     return { checked: 0, updated: 0 };
   }
 }
@@ -70,7 +69,6 @@ export async function updateFinishedMatchPointsForUser(
     .in('match_id', matchIds);
 
   if (error) {
-    console.log('Error loading predictions for point update:', error.message);
     return { checked: 0, updated: 0 };
   }
 
@@ -93,7 +91,6 @@ export async function updateFinishedMatchPointsForUser(
       .eq('match_id', row.match_id);
 
     if (updateError) {
-      console.log('Error updating prediction points:', updateError.message);
     } else {
       updated += 1;
     }

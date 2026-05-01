@@ -42,7 +42,6 @@ export default function HomeScreen({ navigation }: any) {
       .select('user_id, points');
 
     if (error) {
-      console.log('Error loading home points:', error.message);
       return;
     }
 

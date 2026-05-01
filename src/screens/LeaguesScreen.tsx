@@ -48,7 +48,6 @@ export default function LeaguesScreen({ navigation }: any) {  const [leagues, se
       .eq('user_id', userData.user.id);
 
     if (error) {
-      console.log('Error loading leagues:', error.message);
       setLoading(false);
       return;
     }
@@ -88,7 +87,6 @@ export default function LeaguesScreen({ navigation }: any) {  const [leagues, se
       .single();
 
     if (leagueError) {
-      console.log('Error creating league:', leagueError.message);
       Alert.alert('Feil', leagueError.message);
       return;
     }
@@ -101,7 +99,6 @@ export default function LeaguesScreen({ navigation }: any) {  const [leagues, se
       });
 
     if (memberError) {
-      console.log('Error joining own league:', memberError.message);
       Alert.alert('Feil', memberError.message);
       return;
     }

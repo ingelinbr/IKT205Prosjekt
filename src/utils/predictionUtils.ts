@@ -1,6 +1,9 @@
 export type Prediction = "HOME" | "DRAW" | "AWAY";
 
-export function getResult(homeGoals: number | null, awayGoals: number | null) {
+export function getResult(
+  homeGoals: number | null,
+  awayGoals: number | null
+): Prediction | null {
   if (homeGoals === null || awayGoals === null) return null;
 
   if (homeGoals > awayGoals) return "HOME";

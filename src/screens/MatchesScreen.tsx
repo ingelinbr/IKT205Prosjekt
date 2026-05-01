@@ -11,8 +11,12 @@ import {
 } from "react-native";
 import { fetchMatches } from "../services/footballApi";
 import { supabase } from "../lib/supabase";
-
-type Prediction = "HOME" | "DRAW" | "AWAY";
+import {
+  calculatePoints,
+  getResult,
+  isLocked as isPredictionLocked,
+  type Prediction,
+} from "../utils/predictionUtils";
 
 type PredictionRow = {
   match_id: number;
@@ -31,72 +35,31 @@ export default function MatchesScreen({ navigation }: any) {
     loadMatchesAndPredictions();
   }, []);
 
-  function getResult(match: any): Prediction | null {
-    const homeGoals = match.goals?.home;
-    const awayGoals = match.goals?.away;
-
-    if (homeGoals === null || awayGoals === null) return null;
-    if (homeGoals === undefined || awayGoals === undefined) return null;
-
-    if (homeGoals > awayGoals) return "HOME";
-    if (homeGoals < awayGoals) return "AWAY";
-    return "DRAW";
+  function getMatchResult(match: any): Prediction | null {
+    return getResult(match.goals?.home ?? null, match.goals?.away ?? null);
   }
 
-  function calculatePoints(prediction: Prediction, result: Prediction | null) {
-    if (!result) return 0;
-    return prediction === result ? 3 : 0;
+  function isMatchLocked(match: any) {
+    return isPredictionLocked(match.fixture.date);
   }
 
   function isPredictableMatch(match: any) {
     const status = match.fixture?.status?.short;
-    const result = getResult(match);
+    const result = getMatchResult(match);
 
     return !result && (status === "NS" || status === "TBD");
-  }
-
-  async function updateFinishedMatchPoints(
-    userId: string,
-    matchId: number,
-    prediction: Prediction,
-    match: any
-  ) {
-    const result = getResult(match);
-    if (!result) return 0;
-
-    const calculatedPoints = calculatePoints(prediction, result);
-
-    const { error } = await supabase
-      .from("predictions")
-      .update({ points: calculatedPoints })
-      .eq("user_id", userId)
-      .eq("match_id", matchId);
-
-    if (error) {
-      console.log("Error updating points:", error.message);
-    }
-
-    return calculatedPoints;
   }
 
   async function loadMatchesAndPredictions() {
     setLoading(true);
 
     const data = await fetchMatches();
-
-    console.log("MATCHES FROM fetchMatches:", data.length);
-    console.log(
-      "STATUSES:",
-      data.map((m: any) => m.fixture?.status?.short)
-    );
-
     const upcomingMatches = data.filter(isPredictableMatch);
     setMatches(upcomingMatches);
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
-      console.log("No logged in user:", userError?.message);
       setLoading(false);
       return;
     }
@@ -110,9 +73,7 @@ export default function MatchesScreen({ navigation }: any) {
         .eq("user_id", userData.user.id)
         .in("match_id", matchIds);
 
-      if (error) {
-        console.log("Error loading predictions:", error.message);
-      } else if (predictionRows) {
+      if (!error && predictionRows) {
         const predictionMap: Record<number, Prediction> = {};
         const pointsMap: Record<number, number> = {};
 
@@ -130,20 +91,12 @@ export default function MatchesScreen({ navigation }: any) {
     setLoading(false);
   }
 
-  function isLocked(match: any) {
-    const matchTime = new Date(match.fixture.date).getTime();
-    const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-
-    return now >= matchTime - oneHour;
-  }
-
   async function choosePrediction(
     matchId: number,
     prediction: Prediction,
     match: any
   ) {
-    if (isLocked(match)) {
+    if (isMatchLocked(match)) {
       Alert.alert(
         "For sent",
         "Du kan ikke tippe mindre enn 1 time før kampstart."
@@ -184,12 +137,15 @@ export default function MatchesScreen({ navigation }: any) {
       return;
     }
 
+    const result = getMatchResult(match);
+    const calculatedPoints = calculatePoints(prediction, result);
+
     const { error } = await supabase.from("predictions").upsert(
       {
         user_id: userData.user.id,
         match_id: matchId,
         prediction,
-        points: 0,
+        points: calculatedPoints,
       },
       {
         onConflict: "user_id,match_id",
@@ -209,7 +165,6 @@ export default function MatchesScreen({ navigation }: any) {
         [matchId]: oldPoints ?? 0,
       }));
 
-      console.log("Error saving prediction:", error.message);
       Alert.alert("Feil", `Kunne ikke lagre prediction: ${error.message}`);
     }
   }
@@ -253,7 +208,7 @@ export default function MatchesScreen({ navigation }: any) {
           const matchId = item.fixture.id;
           const selected = predictions[matchId];
           const isSaving = savingMatchId === matchId;
-          const locked = isLocked(item);
+          const locked = isMatchLocked(item);
           const matchPoints = points[matchId] ?? 0;
 
           return (
@@ -277,62 +232,31 @@ export default function MatchesScreen({ navigation }: any) {
               <Text style={styles.score}>Resultat: Ikke spilt</Text>
 
               <View style={styles.buttonRow}>
-                <Pressable
-                  style={[
-                    styles.predictionButton,
-                    selected === "HOME" && styles.selectedButton,
-                    (isSaving || locked) && styles.disabledButton,
-                  ]}
-                  disabled={isSaving || locked}
-                  onPress={() => choosePrediction(matchId, "HOME", item)}
-                >
-                  <Text
+                {(["HOME", "DRAW", "AWAY"] as Prediction[]).map((value) => (
+                  <Pressable
+                    key={value}
                     style={[
-                      styles.buttonText,
-                      selected === "HOME" && styles.selectedText,
+                      styles.predictionButton,
+                      selected === value && styles.selectedButton,
+                      (isSaving || locked) && styles.disabledButton,
                     ]}
+                    disabled={isSaving || locked}
+                    onPress={() => choosePrediction(matchId, value, item)}
                   >
-                    Hjemme
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.predictionButton,
-                    selected === "DRAW" && styles.selectedButton,
-                    (isSaving || locked) && styles.disabledButton,
-                  ]}
-                  disabled={isSaving || locked}
-                  onPress={() => choosePrediction(matchId, "DRAW", item)}
-                >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      selected === "DRAW" && styles.selectedText,
-                    ]}
-                  >
-                    Uavgjort
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  style={[
-                    styles.predictionButton,
-                    selected === "AWAY" && styles.selectedButton,
-                    (isSaving || locked) && styles.disabledButton,
-                  ]}
-                  disabled={isSaving || locked}
-                  onPress={() => choosePrediction(matchId, "AWAY", item)}
-                >
-                  <Text
-                    style={[
-                      styles.buttonText,
-                      selected === "AWAY" && styles.selectedText,
-                    ]}
-                  >
-                    Borte
-                  </Text>
-                </Pressable>
+                    <Text
+                      style={[
+                        styles.buttonText,
+                        selected === value && styles.selectedText,
+                      ]}
+                    >
+                      {value === "HOME"
+                        ? "Hjemme"
+                        : value === "DRAW"
+                        ? "Uavgjort"
+                        : "Borte"}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
 
               {selected && (

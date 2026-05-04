@@ -2,6 +2,7 @@ import {
   fetchMatches,
   fetchPreviousMatches,
   fetchAllSeasonMatches,
+  fetchLiveMatches,
 } from "./footballApi";
 
 globalThis.fetch = jest.fn() as any;
@@ -81,4 +82,19 @@ describe("footballApi", () => {
 
     expect(result).toEqual([]);
   });
+
+  test("fetchLiveMatches returns live matches from proxy", async () => {
+  const mockMatches = [{ fixture: { id: 4 } }];
+
+  (fetch as jest.Mock).mockResolvedValueOnce({
+    json: async () => mockMatches,
+  });
+
+  const result = await fetchLiveMatches();
+
+  expect(fetch).toHaveBeenCalledWith(
+    "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=live"
+  );
+  expect(result).toEqual(mockMatches);
+});
 });

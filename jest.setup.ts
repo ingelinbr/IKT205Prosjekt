@@ -28,3 +28,10 @@ jest.mock("./src/lib/supabase", () => ({
     })),
   },
 }));
+
+jest.spyOn(console, "warn").mockImplementation((msg) => {
+  if (typeof msg === "string" && msg.includes("SafeAreaView has been deprecated")) {
+    return;
+  }
+  console.warn(msg);
+});

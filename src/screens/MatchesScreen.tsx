@@ -30,30 +30,13 @@ export default function MatchesScreen({ navigation }: any) {
   const [points, setPoints] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [savingMatchId, setSavingMatchId] = useState<number | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   useEffect(() => {
     loadMatchesAndPredictions();
-  }, []);
 
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const liveMatches = await fetchLiveMatches();
-
-      if (liveMatches.length > 0) {
-        setMatches((prevMatches) => {
-          const matchMap = new Map<number, any>();
-
-          for (const match of prevMatches) {
-            matchMap.set(match.fixture.id, match);
-          }
-
-          for (const liveMatch of liveMatches) {
-            matchMap.set(liveMatch.fixture.id, liveMatch);
-          }
-
-          return Array.from(matchMap.values());
-        });
-      }
+    const interval = setInterval(() => {
+      refreshLiveMatches();
     }, 30000);
 
     return () => clearInterval(interval);
@@ -69,7 +52,7 @@ export default function MatchesScreen({ navigation }: any) {
 
   function isLiveMatch(match: any) {
     const status = match.fixture?.status?.short;
-    return ["1H", "2H", "HT", "ET", "BT", "P"].includes(status);
+    return ["1H", "2H", "HT", "2H", "ET", "BT", "P"].includes(status);
   }
 
   function hasMatchStarted(match: any) {
@@ -77,11 +60,9 @@ export default function MatchesScreen({ navigation }: any) {
     return status !== "NS" && status !== "TBD";
   }
 
-  function isPredictableMatch(match: any) {
+  function isUpcomingOrLiveMatch(match: any) {
     const status = match.fixture?.status?.short;
-    const result = getMatchResult(match);
-
-    return !result && (status === "NS" || status === "TBD");
+    return ["NS", "TBD", "1H", "HT", "2H", "ET", "BT", "P"].includes(status);
   }
 
   function getScoreText(match: any) {
@@ -99,41 +80,72 @@ export default function MatchesScreen({ navigation }: any) {
     setLoading(true);
 
     const data = await fetchMatches();
-    const upcomingMatches = data.filter(isPredictableMatch);
-    setMatches(upcomingMatches);
+    const visibleMatches = data.filter(isUpcomingOrLiveMatch);
 
+    setMatches(visibleMatches);
+    setLastUpdated(new Date());
+
+    await loadPredictions(visibleMatches);
+
+    setLoading(false);
+  }
+
+  async function loadPredictions(matchList: any[]) {
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
-      setLoading(false);
       return;
     }
 
-    const matchIds = upcomingMatches.map((match: any) => match.fixture.id);
+    const matchIds = matchList.map((match: any) => match.fixture.id);
 
-    if (matchIds.length > 0) {
-      const { data: predictionRows, error } = await supabase
-        .from("predictions")
-        .select("match_id, prediction, points")
-        .eq("user_id", userData.user.id)
-        .in("match_id", matchIds);
-
-      if (!error && predictionRows) {
-        const predictionMap: Record<number, Prediction> = {};
-        const pointsMap: Record<number, number> = {};
-
-        for (const row of predictionRows as PredictionRow[]) {
-          const matchId = Number(row.match_id);
-          predictionMap[matchId] = row.prediction;
-          pointsMap[matchId] = row.points ?? 0;
-        }
-
-        setPredictions(predictionMap);
-        setPoints(pointsMap);
-      }
+    if (matchIds.length === 0) {
+      return;
     }
 
-    setLoading(false);
+    const { data: predictionRows, error } = await supabase
+      .from("predictions")
+      .select("match_id, prediction, points")
+      .eq("user_id", userData.user.id)
+      .in("match_id", matchIds);
+
+    if (!error && predictionRows) {
+      const predictionMap: Record<number, Prediction> = {};
+      const pointsMap: Record<number, number> = {};
+
+      for (const row of predictionRows as PredictionRow[]) {
+        const matchId = Number(row.match_id);
+        predictionMap[matchId] = row.prediction;
+        pointsMap[matchId] = row.points ?? 0;
+      }
+
+      setPredictions(predictionMap);
+      setPoints(pointsMap);
+    }
+  }
+
+  async function refreshLiveMatches() {
+    const liveMatches = await fetchLiveMatches();
+
+    if (liveMatches.length === 0) {
+      return;
+    }
+
+    setMatches((prevMatches) => {
+      const matchMap = new Map<number, any>();
+
+      for (const match of prevMatches) {
+        matchMap.set(match.fixture.id, match);
+      }
+
+      for (const liveMatch of liveMatches) {
+        matchMap.set(liveMatch.fixture.id, liveMatch);
+      }
+
+      return Array.from(matchMap.values()).filter(isUpcomingOrLiveMatch);
+    });
+
+    setLastUpdated(new Date());
   }
 
   async function choosePrediction(
@@ -232,6 +244,12 @@ export default function MatchesScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Kamper</Text>
 
+      {lastUpdated && (
+        <Text style={styles.updatedText}>
+          Sist oppdatert: {lastUpdated.toLocaleTimeString()}
+        </Text>
+      )}
+
       <Pressable
         style={styles.navButton}
         onPress={() => navigation.navigate("PreviousMatches")}
@@ -251,7 +269,7 @@ export default function MatchesScreen({ navigation }: any) {
         keyExtractor={(item) => item.fixture.id.toString()}
         ListEmptyComponent={
           <Text style={styles.emptyText}>
-            Ingen kommende kamper å tippe på akkurat nå.
+            Ingen kommende eller live kamper akkurat nå.
           </Text>
         }
         renderItem={({ item }) => {
@@ -348,7 +366,12 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: "#5A2A40",
-    marginBottom: 20,
+    marginBottom: 6,
+  },
+  updatedText: {
+    color: "#A06A85",
+    marginBottom: 14,
+    fontWeight: "600",
   },
   navButton: {
     backgroundColor: "#5A2A40",

@@ -51,3 +51,20 @@ export const fetchAllSeasonMatches = async () => {
     return [];
   }
 };
+
+export const fetchLiveMatches = async () => {
+  try {
+    const res = await fetch(`${PROXY_URL}?type=live`);
+
+    const data = await res.json();
+
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching live matches:", error);
+    return [];
+  }
+};

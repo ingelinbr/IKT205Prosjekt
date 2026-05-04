@@ -14,6 +14,9 @@ Deno.serve(async (req) => {
     } else if (type === "previous") {
       endpoint =
         "https://v3.football.api-sports.io/fixtures?league=39&season=2025&status=FT&last=20";
+    } else if (type === "live") {
+      endpoint =
+        "https://v3.football.api-sports.io/fixtures?league=39&season=2025&live=all";
     } else {
       endpoint =
         "https://v3.football.api-sports.io/fixtures?league=39&season=2025";

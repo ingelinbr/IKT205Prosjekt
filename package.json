@@ -35,15 +35,15 @@
   },
   "devDependencies": {
     "@testing-library/react-native": "^13.3.3",
-    "@types/jest": "^30.0.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
     "supabase": "^2.95.5",
     "typescript": "~5.9.2"
   },
   "jest": {
-  "preset": "jest-expo",
-  "setupFiles": [
-    "<rootDir>/jest.setup.ts"
-  ]
-}
+    "preset": "jest-expo",
+    "setupFiles": [
+      "<rootDir>/jest.setup.ts"
+    ]
+  }
 }

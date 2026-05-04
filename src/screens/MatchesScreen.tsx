@@ -9,7 +9,7 @@ import {
   Pressable,
   Alert,
 } from "react-native";
-import { fetchMatches } from "../services/footballApi";
+import { fetchMatches, fetchLiveMatches } from "../services/footballApi";
 import { supabase } from "../lib/supabase";
 import {
   calculatePoints,
@@ -35,6 +35,30 @@ export default function MatchesScreen({ navigation }: any) {
     loadMatchesAndPredictions();
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const liveMatches = await fetchLiveMatches();
+
+      if (liveMatches.length > 0) {
+        setMatches((prevMatches) => {
+          const matchMap = new Map<number, any>();
+
+          for (const match of prevMatches) {
+            matchMap.set(match.fixture.id, match);
+          }
+
+          for (const liveMatch of liveMatches) {
+            matchMap.set(liveMatch.fixture.id, liveMatch);
+          }
+
+          return Array.from(matchMap.values());
+        });
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   function getMatchResult(match: any): Prediction | null {
     return getResult(match.goals?.home ?? null, match.goals?.away ?? null);
   }
@@ -43,11 +67,32 @@ export default function MatchesScreen({ navigation }: any) {
     return isPredictionLocked(match.fixture.date);
   }
 
+  function isLiveMatch(match: any) {
+    const status = match.fixture?.status?.short;
+    return ["1H", "2H", "HT", "ET", "BT", "P"].includes(status);
+  }
+
+  function hasMatchStarted(match: any) {
+    const status = match.fixture?.status?.short;
+    return status !== "NS" && status !== "TBD";
+  }
+
   function isPredictableMatch(match: any) {
     const status = match.fixture?.status?.short;
     const result = getMatchResult(match);
 
     return !result && (status === "NS" || status === "TBD");
+  }
+
+  function getScoreText(match: any) {
+    const homeGoals = match.goals?.home;
+    const awayGoals = match.goals?.away;
+
+    if (homeGoals === null || awayGoals === null) {
+      return "Ikke spilt";
+    }
+
+    return `${homeGoals} - ${awayGoals}`;
   }
 
   async function loadMatchesAndPredictions() {
@@ -96,6 +141,11 @@ export default function MatchesScreen({ navigation }: any) {
     prediction: Prediction,
     match: any
   ) {
+    if (hasMatchStarted(match)) {
+      Alert.alert("For sent", "Du kan ikke tippe etter at kampen har startet.");
+      return;
+    }
+
     if (isMatchLocked(match)) {
       Alert.alert(
         "For sent",
@@ -209,11 +259,14 @@ export default function MatchesScreen({ navigation }: any) {
           const selected = predictions[matchId];
           const isSaving = savingMatchId === matchId;
           const locked = isMatchLocked(item);
+          const started = hasMatchStarted(item);
           const matchPoints = points[matchId] ?? 0;
 
           return (
             <View style={styles.card}>
               <Text style={styles.round}>{item.league.round}</Text>
+
+              {isLiveMatch(item) && <Text style={styles.liveText}>LIVE</Text>}
 
               <Text style={styles.teams}>
                 {item.teams.home.name} vs {item.teams.away.name}
@@ -223,13 +276,23 @@ export default function MatchesScreen({ navigation }: any) {
                 {new Date(item.fixture.date).toLocaleString()}
               </Text>
 
-              {locked && (
+              <Text style={styles.score}>Resultat: {getScoreText(item)}</Text>
+
+              <Text style={styles.statusText}>
+                Status: {item.fixture?.status?.long ?? "Ukjent"}
+              </Text>
+
+              {locked && !started && (
                 <Text style={styles.lockedText}>
                   Låst: tipping stenger 1 time før kampstart
                 </Text>
               )}
 
-              <Text style={styles.score}>Resultat: Ikke spilt</Text>
+              {started && (
+                <Text style={styles.lockedText}>
+                  Tipping er stengt fordi kampen har startet
+                </Text>
+              )}
 
               <View style={styles.buttonRow}>
                 {(["HOME", "DRAW", "AWAY"] as Prediction[]).map((value) => (
@@ -238,9 +301,9 @@ export default function MatchesScreen({ navigation }: any) {
                     style={[
                       styles.predictionButton,
                       selected === value && styles.selectedButton,
-                      (isSaving || locked) && styles.disabledButton,
+                      (isSaving || locked || started) && styles.disabledButton,
                     ]}
-                    disabled={isSaving || locked}
+                    disabled={isSaving || locked || started}
                     onPress={() => choosePrediction(matchId, value, item)}
                   >
                     <Text
@@ -315,6 +378,11 @@ const styles = StyleSheet.create({
     color: "#A06A85",
     marginBottom: 6,
   },
+  liveText: {
+    color: "#B00020",
+    fontWeight: "bold",
+    marginBottom: 6,
+  },
   teams: {
     fontSize: 16,
     fontWeight: "bold",
@@ -332,6 +400,11 @@ const styles = StyleSheet.create({
   score: {
     marginTop: 6,
     color: "#5A2A40",
+    fontWeight: "600",
+  },
+  statusText: {
+    marginTop: 4,
+    color: "#A06A85",
     fontWeight: "600",
   },
   buttonRow: {

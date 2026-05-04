@@ -1,11 +1,16 @@
 import React from "react";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import MatchesScreen from "./MatchesScreen";
-import { fetchMatches } from "../services/footballApi";
+import { fetchMatches, fetchLiveMatches } from "../services/footballApi";
 import { supabase } from "../lib/supabase";
 
 jest.mock("../services/footballApi", () => ({
   fetchMatches: jest.fn(),
+  fetchLiveMatches: jest.fn(),
+}));
+
+jest.mock("../services/predictionScoring", () => ({
+  updateUserPredictionPoints: jest.fn(),
 }));
 
 const mockUpsert = jest.fn(async () => ({ error: null }));
@@ -31,7 +36,7 @@ const futureMatch = {
   fixture: {
     id: 123,
     date: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
-    status: { short: "NS" },
+    status: { short: "NS", long: "Not Started" },
   },
   league: {
     round: "Round 1",
@@ -51,6 +56,7 @@ describe("MatchesScreen", () => {
     jest.clearAllMocks();
 
     (fetchMatches as jest.Mock).mockResolvedValue([futureMatch]);
+    (fetchLiveMatches as jest.Mock).mockResolvedValue([]);
 
     (supabase.auth.getUser as jest.Mock).mockResolvedValue({
       data: {

@@ -138,6 +138,12 @@ export default function MatchesScreen({ navigation }: any) {
     return now >= matchTime - oneHour;
   }
 
+  function getPredictionLabel(prediction: Prediction) {
+    if (prediction === "HOME") return "Hjemmeseier";
+    if (prediction === "DRAW") return "Uavgjort";
+    return "Borteseier";
+  }
+
   async function choosePrediction(
     matchId: number,
     prediction: Prediction,
@@ -217,37 +223,65 @@ export default function MatchesScreen({ navigation }: any) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>Kamper</Text>
-        <ActivityIndicator size="large" />
+        <View style={styles.loadingContent}>
+          <Text style={styles.eyebrow}>Kamper</Text>
+          <Text style={styles.title}>Tipp kamper</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Laster kommende kamper...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Kamper</Text>
-
-      <Pressable
-        style={styles.navButton}
-        onPress={() => navigation.navigate("PreviousMatches")}
-      >
-        <Text style={styles.navButtonText}>Se tidligere kamper</Text>
-      </Pressable>
-
-      <Pressable
-        style={styles.navButton}
-        onPress={() => navigation.navigate("AllMatches")}
-      >
-        <Text style={styles.navButtonText}>Se alle kamper</Text>
-      </Pressable>
-
       <FlatList
         data={matches}
         keyExtractor={(item) => item.fixture.id.toString()}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.eyebrow}>Kamper</Text>
+            <Text style={styles.title}>Tipp kamper</Text>
+            <Text style={styles.subtitle}>
+              Velg hvem du tror vinner. Riktig prediksjon gir 3 poeng.
+            </Text>
+
+            <View style={styles.navCard}>
+              <Text style={styles.cardTitle}>Utforsk kamper</Text>
+
+              <Pressable
+                style={styles.primaryButton}
+                onPress={() => navigation.navigate("PreviousMatches")}
+              >
+                <Text style={styles.primaryButtonText}>
+                  Se tidligere kamper
+                </Text>
+              </Pressable>
+
+              <Pressable
+                style={styles.secondaryButton}
+                onPress={() => navigation.navigate("AllMatches")}
+              >
+                <Text style={styles.secondaryButtonText}>Se alle kamper</Text>
+              </Pressable>
+            </View>
+
+            {matches.length > 0 && (
+              <Text style={styles.sectionTitle}>Kommende kamper</Text>
+            )}
+          </View>
+        }
         ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            Ingen kommende kamper å tippe på akkurat nå.
-          </Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>⚽</Text>
+            <Text style={styles.emptyTitle}>Ingen kamper å tippe på nå</Text>
+            <Text style={styles.emptyText}>
+              Kom tilbake senere for å predikere kommende Premier
+              League-kamper.
+            </Text>
+          </View>
         }
         renderItem={({ item }) => {
           const matchId = item.fixture.id;
@@ -257,12 +291,26 @@ export default function MatchesScreen({ navigation }: any) {
           const matchPoints = points[matchId] ?? 0;
 
           return (
-            <View style={styles.card}>
-              <Text style={styles.round}>{item.league.round}</Text>
+            <View style={styles.matchCard}>
+              <View style={styles.matchHeader}>
+                <Text style={styles.round}>{item.league.round}</Text>
 
-              <Text style={styles.teams}>
-                {item.teams.home.name} vs {item.teams.away.name}
-              </Text>
+                {locked ? (
+                  <View style={styles.lockedBadge}>
+                    <Text style={styles.lockedBadgeText}>Låst</Text>
+                  </View>
+                ) : (
+                  <View style={styles.openBadge}>
+                    <Text style={styles.openBadgeText}>Åpen for tipping</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.teamsBlock}>
+                <Text style={styles.teamName}>{item.teams.home.name}</Text>
+                <Text style={styles.vsText}>mot</Text>
+                <Text style={styles.teamName}>{item.teams.away.name}</Text>
+              </View>
 
               <Text style={styles.date}>
                 {new Date(item.fixture.date).toLocaleString()}
@@ -270,11 +318,11 @@ export default function MatchesScreen({ navigation }: any) {
 
               {locked && (
                 <Text style={styles.lockedText}>
-                  Låst: tipping stenger 1 time før kampstart
+                  Tipping stenger 1 time før kampstart.
                 </Text>
               )}
 
-              <Text style={styles.score}>Resultat: Ikke spilt</Text>
+              <Text style={styles.predictLabel}>Din prediksjon</Text>
 
               <View style={styles.buttonRow}>
                 <Pressable
@@ -336,11 +384,19 @@ export default function MatchesScreen({ navigation }: any) {
               </View>
 
               {selected && (
-                <Text style={styles.selectedInfo}>
-                  {isSaving
-                    ? "Lagrer..."
-                    : `Ditt valg: ${selected} | Poeng: ${matchPoints}`}
-                </Text>
+                <View style={styles.selectedInfoBox}>
+                  <Text style={styles.selectedInfo}>
+                    {isSaving
+                      ? "Lagrer prediksjon..."
+                      : `Ditt valg: ${getPredictionLabel(selected)}`}
+                  </Text>
+
+                  {!isSaving && (
+                    <Text style={styles.pointsText}>
+                      Nåværende poeng: {matchPoints}
+                    </Text>
+                  )}
+                </View>
               )}
             </View>
           );
@@ -350,98 +406,253 @@ export default function MatchesScreen({ navigation }: any) {
   );
 }
 
+const colors = {
+  background: "#FFF0F5",
+  card: "#FFE4EC",
+  primary: "#5A2A40",
+  muted: "#A06A85",
+  border: "#F3BDD1",
+  white: "#FFFFFF",
+  danger: "#B00020",
+  successBg: "#F7DCE8",
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF0F5",
+    backgroundColor: colors.background,
+  },
+  listContent: {
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 36,
+    paddingBottom: 40,
+  },
+  loadingContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 36,
+  },
+  eyebrow: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.muted,
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#5A2A40",
-    marginBottom: 20,
+    fontSize: 34,
+    fontWeight: "800",
+    color: colors.primary,
+    marginBottom: 8,
   },
-  navButton: {
-    backgroundColor: "#5A2A40",
-    padding: 12,
-    borderRadius: 14,
+  subtitle: {
+    fontSize: 16,
+    color: colors.muted,
+    lineHeight: 22,
+    marginBottom: 22,
+  },
+  loadingText: {
+    color: colors.muted,
+    marginTop: 14,
+    fontWeight: "600",
+  },
+  navCard: {
+    backgroundColor: colors.card,
+    borderRadius: 28,
+    padding: 22,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+    marginBottom: 12,
+  },
+  primaryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 15,
+    borderRadius: 18,
     alignItems: "center",
-    marginBottom: 16,
+    marginTop: 4,
   },
-  navButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
+  primaryButtonText: {
+    color: colors.white,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  secondaryButton: {
+    backgroundColor: colors.white,
+    paddingVertical: 14,
+    borderRadius: 18,
+    alignItems: "center",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secondaryButtonText: {
+    color: colors.primary,
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+    marginBottom: 12,
+  },
+  emptyCard: {
+    backgroundColor: colors.card,
+    borderRadius: 28,
+    padding: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyIcon: {
+    fontSize: 34,
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: colors.primary,
+    marginBottom: 8,
+    textAlign: "center",
   },
   emptyText: {
-    color: "#5A2A40",
+    color: colors.muted,
     textAlign: "center",
-    marginTop: 24,
-    fontWeight: "600",
+    fontSize: 15,
+    lineHeight: 21,
   },
-  card: {
-    backgroundColor: "#FFE4EC",
-    borderRadius: 20,
-    padding: 18,
+  matchCard: {
+    backgroundColor: colors.card,
+    borderRadius: 28,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  matchHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
+    gap: 10,
   },
   round: {
+    flex: 1,
     fontSize: 13,
-    color: "#A06A85",
-    marginBottom: 6,
+    color: colors.muted,
+    fontWeight: "700",
   },
-  teams: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#5A2A40",
+  openBadge: {
+    backgroundColor: colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  openBadgeText: {
+    color: colors.primary,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  lockedBadge: {
+    backgroundColor: colors.primary,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  lockedBadgeText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  teamsBlock: {
+    marginBottom: 10,
+  },
+  teamName: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: colors.primary,
+    lineHeight: 28,
+  },
+  vsText: {
+    fontSize: 13,
+    color: colors.muted,
+    fontWeight: "700",
+    marginVertical: 2,
   },
   date: {
-    marginTop: 6,
-    color: "#A06A85",
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 8,
   },
   lockedText: {
-    marginTop: 8,
-    color: "#B00020",
-    fontWeight: "bold",
+    marginTop: 2,
+    marginBottom: 8,
+    color: colors.danger,
+    fontWeight: "700",
+    fontSize: 13,
   },
-  score: {
-    marginTop: 6,
-    color: "#5A2A40",
-    fontWeight: "600",
+  predictLabel: {
+    marginTop: 8,
+    marginBottom: 10,
+    color: colors.primary,
+    fontWeight: "800",
+    fontSize: 15,
   },
   buttonRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 16,
   },
   predictionButton: {
     flex: 1,
-    backgroundColor: "#FFF0F5",
-    borderRadius: 14,
-    paddingVertical: 10,
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#E8B7C8",
+    borderColor: colors.border,
   },
   selectedButton: {
-    backgroundColor: "#5A2A40",
-    borderColor: "#5A2A40",
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   disabledButton: {
     opacity: 0.45,
   },
   buttonText: {
-    color: "#5A2A40",
-    fontWeight: "600",
+    color: colors.primary,
+    fontWeight: "800",
     fontSize: 13,
   },
   selectedText: {
-    color: "#FFFFFF",
+    color: colors.white,
+  },
+  selectedInfoBox: {
+    backgroundColor: colors.white,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   selectedInfo: {
-    marginTop: 12,
-    color: "#5A2A40",
-    fontWeight: "bold",
+    color: colors.primary,
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  pointsText: {
+    color: colors.muted,
+    fontWeight: "600",
+    marginTop: 4,
+    fontSize: 13,
   },
 });

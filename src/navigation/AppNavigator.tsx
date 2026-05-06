@@ -9,6 +9,7 @@ import AuthGateScreen from '../screens/AuthGateScreen';
 import PreviousMatchesScreen from '../screens/PreviousMatchesScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import AllMatchesScreen from '../screens/AllMatchesScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
 
 export type RootStackParamList = {
   AuthGate: undefined;
@@ -23,6 +24,7 @@ export type RootStackParamList = {
     joinCode: string;
   };
   AllMatches: undefined;
+  Leaderboard: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -77,14 +79,21 @@ export default function AppNavigator() {
         />
 
         <Stack.Screen
-          name="LeagueDetail"
-          component={LeagueDetailScreen}
-          options={{ title: 'Liga' }}
-        />
-        <Stack.Screen
           name="AllMatches"
           component={AllMatchesScreen}
           options={{ title: 'Alle kamper' }}
+        />
+
+        <Stack.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{ title: 'Global liga' }}
+        />
+
+        <Stack.Screen
+          name="LeagueDetail"
+          component={LeagueDetailScreen}
+          options={{ title: 'Liga' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

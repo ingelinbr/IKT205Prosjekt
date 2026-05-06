@@ -10,6 +10,8 @@ import PreviousMatchesScreen from '../screens/PreviousMatchesScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import AllMatchesScreen from '../screens/AllMatchesScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import PublicProfileScreen from '../screens/PublicProfileScreen';
 
 export type RootStackParamList = {
   AuthGate: undefined;
@@ -18,13 +20,19 @@ export type RootStackParamList = {
   CreatePin: { username: string };
   Main: { username: string } | undefined;
   PreviousMatches: undefined;
+  AllMatches: undefined;
+  Leaderboard: undefined;
   LeagueDetail: {
     leagueId: string;
     leagueName: string;
     joinCode: string;
   };
-  AllMatches: undefined;
-  Leaderboard: undefined;
+  EditProfile: {
+    currentUsername: string;
+  };
+  PublicProfile: {
+    userId: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -94,6 +102,18 @@ export default function AppNavigator() {
           name="LeagueDetail"
           component={LeagueDetailScreen}
           options={{ title: 'Liga' }}
+        />
+
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ title: 'Rediger profil' }}
+        />
+
+        <Stack.Screen
+          name="PublicProfile"
+          component={PublicProfileScreen}
+          options={{ title: 'Profil' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

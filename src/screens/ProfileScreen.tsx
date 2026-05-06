@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Pressable,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -166,7 +167,10 @@ export default function ProfileScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.eyebrow}>Profil</Text>
         <Text style={styles.title}>Min profil</Text>
 
@@ -178,8 +182,20 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.profileInfo}>
             <Text style={styles.username}>{username}</Text>
             <Text style={styles.email}>{email}</Text>
+            <Text style={styles.teamText}>Favorittlag: Ikke valgt enda</Text>
           </View>
         </View>
+
+        <Pressable
+          style={styles.editButton}
+          onPress={() =>
+            navigation.navigate('EditProfile', {
+              currentUsername: username,
+            })
+          }
+        >
+          <Text style={styles.editButtonText}>Rediger profil</Text>
+        </Pressable>
 
         <View style={styles.pointsCard}>
           <Text style={styles.cardLabel}>Total poeng</Text>
@@ -219,14 +235,14 @@ export default function ProfileScreen({ navigation }: any) {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Profilbilde</Text>
-            <Text style={styles.infoValue}>Initialer</Text>
+            <Text style={styles.infoValue}>Initialer nå, bilde senere</Text>
           </View>
         </View>
 
         <Pressable style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Logg ut</Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -248,7 +264,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   content: {
-    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 26,
     paddingBottom: 28,
@@ -285,7 +300,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   avatar: {
     width: 64,
@@ -314,6 +329,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.muted,
     fontWeight: '600',
+    marginBottom: 4,
+  },
+  teamText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  editButton: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
+  },
+  editButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '900',
   },
   pointsCard: {
     backgroundColor: colors.primary,

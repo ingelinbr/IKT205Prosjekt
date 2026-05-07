@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   Text,
@@ -8,102 +8,34 @@ import {
   ActivityIndicator,
   Pressable,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 
-type LeaderboardUser = {
+type TeamLeagueUser = {
   user_id: string;
   username: string;
   totalPoints: number;
 };
 
-export default function LeaderboardScreen({ navigation }: any) {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+export default function TeamLeagueScreen({ navigation, route }: any) {
+  const { teamName } = route.params;
+
+  const [users, setUsers] = useState<TeamLeagueUser[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadLeaderboard();
+  useEffect(() => {
+    loadTeamLeague();
+  }, []);
 
-      const channel = supabase
-        .channel('leaderboard-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'predictions',
-          },
-          () => {
-            loadLeaderboard();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'profiles',
-          },
-          () => {
-            loadLeaderboard();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }, [])
-  );
-
-  async function ensureCurrentUserProfile() {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !userData.user) {
-      console.log('Error loading current user:', userError?.message);
-      return;
-    }
-
-    const user = userData.user;
-    const fallbackUsername =
-      user.user_metadata?.username || user.email?.split('@')[0] || 'Bruker';
-
-    const { data: existingProfile, error: checkError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (checkError) {
-      console.log('Error checking current profile:', checkError.message);
-      return;
-    }
-
-    if (!existingProfile) {
-      const { error: insertError } = await supabase.from('profiles').insert({
-        id: user.id,
-        username: fallbackUsername,
-        favorite_team: null,
-      });
-
-      if (insertError) {
-        console.log('Error creating current profile:', insertError.message);
-      }
-    }
-  }
-
-  async function loadLeaderboard() {
+  async function loadTeamLeague() {
     setLoading(true);
-
-    await ensureCurrentUserProfile();
 
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
-      .select('id, username');
+      .select('id, username, favorite_team')
+      .eq('favorite_team', teamName);
 
     if (profileError) {
-      console.log('Error loading profiles:', profileError.message);
+      console.log('Error loading team profiles:', profileError.message);
       setLoading(false);
       return;
     }
@@ -113,7 +45,7 @@ export default function LeaderboardScreen({ navigation }: any) {
       .select('user_id, points');
 
     if (predictionError) {
-      console.log('Error loading leaderboard:', predictionError.message);
+      console.log('Error loading team league points:', predictionError.message);
       setLoading(false);
       return;
     }
@@ -133,7 +65,7 @@ export default function LeaderboardScreen({ navigation }: any) {
         }))
         .sort((a, b) => b.totalPoints - a.totalPoints) ?? [];
 
-    setLeaderboard(sorted);
+    setUsers(sorted);
     setLoading(false);
   }
 
@@ -147,8 +79,8 @@ export default function LeaderboardScreen({ navigation }: any) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.eyebrow}>Global liga</Text>
-        <Text style={styles.title}>Global toppliste</Text>
+        <Text style={styles.eyebrow}>Favorittlag-liga</Text>
+        <Text style={styles.title}>{teamName}</Text>
         <ActivityIndicator size="large" color="#5A2A40" />
       </SafeAreaView>
     );
@@ -156,19 +88,24 @@ export default function LeaderboardScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.eyebrow}>Global liga</Text>
-      <Text style={styles.title}>Global toppliste</Text>
+      <Text style={styles.eyebrow}>Favorittlag-liga</Text>
+      <Text style={styles.title}>{teamName}</Text>
       <Text style={styles.subtitle}>
-        Alle brukere vises her, også de som ikke har fått poeng ennå.
+        Alle brukere som har valgt {teamName} som favorittlag.
       </Text>
 
       <FlatList
-        data={leaderboard}
+        data={users}
         keyExtractor={(item) => item.user_id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
-          <Text style={styles.empty}>Ingen brukere registrert enda.</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Ingen fans enda</Text>
+            <Text style={styles.emptyText}>
+              Når brukere velger {teamName} som favorittlag, vises de her.
+            </Text>
+          </View>
         }
         renderItem={({ item, index }) => (
           <Pressable
@@ -183,9 +120,7 @@ export default function LeaderboardScreen({ navigation }: any) {
 
             <View style={styles.userInfo}>
               <Text style={styles.username}>{item.username}</Text>
-              <Text style={styles.userSubtitle}>
-                {index === 0 ? 'Leder tabellen' : 'Premier League predictor'}
-              </Text>
+              <Text style={styles.userSubtitle}>{teamName}-fan</Text>
             </View>
 
             <View style={styles.pointsBox}>
@@ -277,9 +212,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#FFE4EC',
   },
-  empty: {
+  emptyCard: {
+    backgroundColor: '#FFE4EC',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#F3BDD1',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '900',
     color: '#5A2A40',
-    fontSize: 15,
-    fontWeight: '700',
+    marginBottom: 6,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#A06A85',
+    lineHeight: 20,
   },
 });

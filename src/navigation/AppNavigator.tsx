@@ -9,6 +9,10 @@ import AuthGateScreen from '../screens/AuthGateScreen';
 import PreviousMatchesScreen from '../screens/PreviousMatchesScreen';
 import LeagueDetailScreen from '../screens/LeagueDetailScreen';
 import AllMatchesScreen from '../screens/AllMatchesScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import PublicProfileScreen from '../screens/PublicProfileScreen';
+import TeamLeagueScreen from '../screens/TeamLeagueScreen';
 
 export type RootStackParamList = {
   AuthGate: undefined;
@@ -17,12 +21,23 @@ export type RootStackParamList = {
   CreatePin: { username: string };
   Main: { username: string } | undefined;
   PreviousMatches: undefined;
+  AllMatches: undefined;
+  Leaderboard: undefined;
   LeagueDetail: {
     leagueId: string;
     leagueName: string;
     joinCode: string;
   };
-  AllMatches: undefined;
+  EditProfile: {
+    currentUsername: string;
+    currentFavoriteTeam: string | null;
+  };
+  PublicProfile: {
+    userId: string;
+  };
+  TeamLeague: {
+    teamName: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -77,14 +92,39 @@ export default function AppNavigator() {
         />
 
         <Stack.Screen
+          name="AllMatches"
+          component={AllMatchesScreen}
+          options={{ title: 'Alle kamper' }}
+        />
+
+        <Stack.Screen
+          name="Leaderboard"
+          component={LeaderboardScreen}
+          options={{ title: 'Global liga' }}
+        />
+
+        <Stack.Screen
           name="LeagueDetail"
           component={LeagueDetailScreen}
           options={{ title: 'Liga' }}
         />
+
         <Stack.Screen
-          name="AllMatches"
-          component={AllMatchesScreen}
-          options={{ title: 'Alle kamper' }}
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ title: 'Rediger profil' }}
+        />
+
+        <Stack.Screen
+          name="PublicProfile"
+          component={PublicProfileScreen}
+          options={{ title: 'Profil' }}
+        />
+
+        <Stack.Screen
+          name="TeamLeague"
+          component={TeamLeagueScreen}
+          options={{ title: 'Favorittlag-liga' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

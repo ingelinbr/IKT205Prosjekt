@@ -2,14 +2,14 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 
 import HomeScreen from '../screens/HomeScreen';
 import MatchesScreen from '../screens/MatchesScreen';
-import LeaderboardScreen from '../screens/LeaderboardScreen';
 import LeaguesScreen from '../screens/LeaguesScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 
 export type MainTabParamList = {
   HomeTab: undefined;
   MatchesTab: undefined;
-  Leaderboard: undefined;
-  LeaguesTab: undefined; // LEGG TIL DENNE
+  LeaguesTab: undefined;
+  ProfileTab: undefined;
 };
 
 const Tab = createMaterialTopTabNavigator<MainTabParamList>();
@@ -18,6 +18,7 @@ export default function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
+        swipeEnabled: true,
         tabBarActiveTintColor: '#5A2A40',
         tabBarInactiveTintColor: '#A06A85',
         tabBarStyle: {
@@ -46,16 +47,16 @@ export default function MainTabs() {
       />
 
       <Tab.Screen
-        name="Leaderboard"
-        component={LeaderboardScreen}
-        options={{ title: 'Toppliste' }}
-      />
-      <Tab.Screen
         name="LeaguesTab"
         component={LeaguesScreen}
         options={{ title: 'Ligaer' }}
       />
 
+      <Tab.Screen
+        name="ProfileTab"
+        component={ProfileScreen}
+        options={{ title: 'Profil' }}
+      />
     </Tab.Navigator>
   );
 }

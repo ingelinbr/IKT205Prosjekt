@@ -22,6 +22,7 @@ type ProfileStats = {
 export default function ProfileScreen({ navigation }: any) {
   const [username, setUsername] = useState('Bruker');
   const [email, setEmail] = useState('');
+  const [favoriteTeam, setFavoriteTeam] = useState<string | null>(null);
   const [stats, setStats] = useState<ProfileStats>({
     totalPoints: 0,
     totalPredictions: 0,
@@ -55,7 +56,7 @@ export default function ProfileScreen({ navigation }: any) {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('username')
+      .select('username, favorite_team')
       .eq('id', user.id)
       .single();
 
@@ -64,6 +65,7 @@ export default function ProfileScreen({ navigation }: any) {
     }
 
     setUsername(profile?.username || fallbackUsername);
+    setFavoriteTeam(profile?.favorite_team ?? null);
 
     const { data: predictions, error: predictionsError } = await supabase
       .from('predictions')
@@ -182,7 +184,9 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.profileInfo}>
             <Text style={styles.username}>{username}</Text>
             <Text style={styles.email}>{email}</Text>
-            <Text style={styles.teamText}>Favorittlag: Ikke valgt enda</Text>
+            <Text style={styles.teamText}>
+              Favorittlag: {favoriteTeam || 'Ikke valgt enda'}
+            </Text>
           </View>
         </View>
 
@@ -191,6 +195,7 @@ export default function ProfileScreen({ navigation }: any) {
           onPress={() =>
             navigation.navigate('EditProfile', {
               currentUsername: username,
+              currentFavoriteTeam: favoriteTeam,
             })
           }
         >
@@ -231,6 +236,13 @@ export default function ProfileScreen({ navigation }: any) {
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>E-post</Text>
             <Text style={styles.infoValue}>{email || 'Ikke tilgjengelig'}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Favorittlag</Text>
+            <Text style={styles.infoValue}>
+              {favoriteTeam || 'Ikke valgt enda'}
+            </Text>
           </View>
 
           <View style={styles.infoRow}>

@@ -8,16 +8,24 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { PREMIER_LEAGUE_TEAMS } from '../services/premierLeagueTeams';
+import TeamLeagueScreen from '../screens/TeamLeagueScreen';
 
 export default function EditProfileScreen({ navigation, route }: any) {
   const [username, setUsername] = useState(route.params?.currentUsername ?? '');
-  const [favoriteTeam, setFavoriteTeam] = useState('');
+  const [favoriteTeam, setFavoriteTeam] = useState(
+    route.params?.currentFavoriteTeam ?? ''
+  );
+  const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function saveProfile() {
     const trimmedUsername = username.trim();
+    const trimmedFavoriteTeam = favoriteTeam.trim();
 
     if (!trimmedUsername) {
       Alert.alert('Feil', 'Brukernavn kan ikke være tomt.');
@@ -40,6 +48,7 @@ export default function EditProfileScreen({ navigation, route }: any) {
         {
           id: userData.user.id,
           username: trimmedUsername,
+          favorite_team: trimmedFavoriteTeam || null,
         },
         {
           onConflict: 'id',
@@ -57,6 +66,20 @@ export default function EditProfileScreen({ navigation, route }: any) {
     navigation.goBack();
   }
 
+  function getInitials() {
+    const name = username.trim();
+
+    if (!name) return 'B';
+
+    const parts = name.split(' ');
+
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -65,9 +88,7 @@ export default function EditProfileScreen({ navigation, route }: any) {
 
         <View style={styles.card}>
           <View style={styles.avatarPreview}>
-            <Text style={styles.avatarText}>
-              {username ? username.slice(0, 2).toUpperCase() : 'B'}
-            </Text>
+            <Text style={styles.avatarText}>{getInitials()}</Text>
           </View>
 
           <Text style={styles.avatarHint}>
@@ -77,6 +98,7 @@ export default function EditProfileScreen({ navigation, route }: any) {
 
         <View style={styles.card}>
           <Text style={styles.label}>Brukernavn</Text>
+
           <TextInput
             style={styles.input}
             placeholder="Brukernavn"
@@ -86,16 +108,26 @@ export default function EditProfileScreen({ navigation, route }: any) {
           />
 
           <Text style={styles.label}>Favorittlag</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="F.eks. Arsenal"
-            placeholderTextColor={colors.muted}
-            value={favoriteTeam}
-            onChangeText={setFavoriteTeam}
-          />
+
+          <Pressable
+            style={styles.dropdownButton}
+            onPress={() => setTeamPickerOpen(true)}
+          >
+            <Text
+              style={[
+                styles.dropdownText,
+                !favoriteTeam && styles.dropdownPlaceholder,
+              ]}
+            >
+              {favoriteTeam || 'Velg favorittlag'}
+            </Text>
+
+            <Text style={styles.dropdownArrow}>⌄</Text>
+          </Pressable>
 
           <Text style={styles.helperText}>
-            Favorittlag og profilbilde kan kobles til Supabase senere.
+            Senere kan favorittlaget brukes til å plassere deg automatisk i en
+            lag-liga.
           </Text>
 
           <Pressable
@@ -110,6 +142,60 @@ export default function EditProfileScreen({ navigation, route }: any) {
             )}
           </Pressable>
         </View>
+
+        <Modal
+          visible={teamPickerOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setTeamPickerOpen(false)}
+        >
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setTeamPickerOpen(false)}
+          >
+            <Pressable style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Velg favorittlag</Text>
+
+              <FlatList
+                data={PREMIER_LEAGUE_TEAMS}
+                keyExtractor={(item) => item}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={[
+                      styles.teamOption,
+                      favoriteTeam === item && styles.selectedTeamOption,
+                    ]}
+                    onPress={() => {
+                      setFavoriteTeam(item);
+                      setTeamPickerOpen(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.teamOptionText,
+                        favoriteTeam === item &&
+                          styles.selectedTeamOptionText,
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+
+              <Pressable
+                style={styles.clearTeamButton}
+                onPress={() => {
+                  setFavoriteTeam('');
+                  setTeamPickerOpen(false);
+                }}
+              >
+                <Text style={styles.clearTeamText}>Fjern favorittlag</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -194,6 +280,34 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     color: colors.primary,
   },
+  dropdownButton: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dropdownText: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '700',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    color: colors.muted,
+    fontWeight: '600',
+  },
+  dropdownArrow: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '900',
+    marginLeft: 10,
+  },
   helperText: {
     color: colors.muted,
     fontSize: 12,
@@ -214,5 +328,56 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.6,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(90, 42, 64, 0.35)',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  modalCard: {
+    backgroundColor: colors.background,
+    borderRadius: 24,
+    padding: 18,
+    maxHeight: '75%',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.primary,
+    marginBottom: 12,
+  },
+  teamOption: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  selectedTeamOption: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  teamOptionText: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  selectedTeamOptionText: {
+    color: colors.white,
+  },
+  clearTeamButton: {
+    marginTop: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  clearTeamText: {
+    color: colors.muted,
+    fontSize: 14,
+    fontWeight: '800',
   },
 });

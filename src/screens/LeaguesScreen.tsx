@@ -21,6 +21,7 @@ type League = {
 
 export default function LeaguesScreen({ navigation }: any) {
   const [leagues, setLeagues] = useState<League[]>([]);
+  const [favoriteTeam, setFavoriteTeam] = useState<string | null>(null);
   const [leagueName, setLeagueName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,43 @@ export default function LeaguesScreen({ navigation }: any) {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   }
 
+  async function ensureProfileExists(user: any) {
+    const fallbackUsername =
+      user.user_metadata?.username || user.email?.split('@')[0] || 'Bruker';
+
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('id, favorite_team')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.log('Error checking profile:', checkError.message);
+      return null;
+    }
+
+    if (!existingProfile) {
+      const { data: createdProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          username: fallbackUsername,
+          favorite_team: null,
+        })
+        .select('favorite_team')
+        .single();
+
+      if (insertError) {
+        console.log('Error creating profile:', insertError.message);
+        return null;
+      }
+
+      return createdProfile?.favorite_team ?? null;
+    }
+
+    return existingProfile.favorite_team ?? null;
+  }
+
   async function loadMyLeagues() {
     setLoading(true);
 
@@ -42,6 +80,9 @@ export default function LeaguesScreen({ navigation }: any) {
       setLoading(false);
       return;
     }
+
+    const userFavoriteTeam = await ensureProfileExists(userData.user);
+    setFavoriteTeam(userFavoriteTeam);
 
     const { data: memberships, error } = await supabase
       .from('league_members')
@@ -217,6 +258,53 @@ export default function LeaguesScreen({ navigation }: any) {
                 <Text style={styles.rowChevron}>›</Text>
               </Pressable>
             </View>
+
+            {favoriteTeam && (
+              <>
+                <View style={styles.sectionDivider} />
+
+                <View style={styles.sectionBlock}>
+                  <View style={styles.sectionRow}>
+                    <View style={styles.sectionTextWrap}>
+                      <Text style={styles.sectionTitle}>Favorittlag-liga</Text>
+                      <Text style={styles.sectionSubtitle}>
+                        Din liga for {favoriteTeam}-fans
+                      </Text>
+                    </View>
+
+                    <View style={styles.countBadge}>
+                      <Text style={styles.countBadgeText}>1</Text>
+                    </View>
+                  </View>
+
+                  <Pressable
+                    style={styles.leagueRow}
+                    onPress={() =>
+                      navigation.getParent()?.navigate('TeamLeague', {
+                        teamName: favoriteTeam,
+                      })
+                    }
+                  >
+                    <View style={styles.teamLeagueIcon}>
+                      <Text style={styles.leagueIconText}>⭐</Text>
+                    </View>
+
+                    <View style={styles.leagueInfo}>
+                      <Text style={styles.leagueName}>{favoriteTeam}-liga</Text>
+                      <Text style={styles.leagueMeta}>
+                        Alle som heier på {favoriteTeam}
+                      </Text>
+                    </View>
+
+                    <View style={styles.typeBadgeLight}>
+                      <Text style={styles.typeBadgeLightText}>Lag</Text>
+                    </View>
+
+                    <Text style={styles.rowChevron}>›</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
 
             <View style={styles.sectionDivider} />
 
@@ -446,6 +534,15 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 12,
     backgroundColor: colors.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  teamLeagueIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,

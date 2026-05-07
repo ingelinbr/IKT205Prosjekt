@@ -12,6 +12,7 @@ import AllMatchesScreen from '../screens/AllMatchesScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import PublicProfileScreen from '../screens/PublicProfileScreen';
+import TeamLeagueScreen from '../screens/TeamLeagueScreen';
 
 export type RootStackParamList = {
   AuthGate: undefined;
@@ -29,9 +30,13 @@ export type RootStackParamList = {
   };
   EditProfile: {
     currentUsername: string;
+    currentFavoriteTeam: string | null;
   };
   PublicProfile: {
     userId: string;
+  };
+  TeamLeague: {
+    teamName: string;
   };
 };
 
@@ -114,6 +119,12 @@ export default function AppNavigator() {
           name="PublicProfile"
           component={PublicProfileScreen}
           options={{ title: 'Profil' }}
+        />
+
+        <Stack.Screen
+          name="TeamLeague"
+          component={TeamLeagueScreen}
+          options={{ title: 'Favorittlag-liga' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

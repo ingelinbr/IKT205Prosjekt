@@ -29,9 +29,10 @@ export type RootStackParamList = {
     joinCode: string;
   };
   EditProfile: {
-    currentUsername: string;
-    currentFavoriteTeam: string | null;
-  };
+  currentUsername: string;
+  currentFavoriteTeam: string | null;
+  currentAvatarUrl: string | null;
+};
   PublicProfile: {
     userId: string;
   };

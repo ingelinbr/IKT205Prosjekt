@@ -8,6 +8,7 @@ import {
   Pressable,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -23,6 +24,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [username, setUsername] = useState('Bruker');
   const [email, setEmail] = useState('');
   const [favoriteTeam, setFavoriteTeam] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<ProfileStats>({
     totalPoints: 0,
     totalPredictions: 0,
@@ -54,18 +56,44 @@ export default function ProfileScreen({ navigation }: any) {
     const fallbackUsername =
       user.user_metadata?.username || user.email?.split('@')[0] || 'Bruker';
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: existingProfile, error: profileError } = await supabase
       .from('profiles')
-      .select('username, favorite_team')
+      .select('username, favorite_team, avatar_url')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
-      console.log('Error loading profile:', profileError.message);
+      console.log('Error checking profile:', profileError.message);
     }
 
-    setUsername(profile?.username || fallbackUsername);
-    setFavoriteTeam(profile?.favorite_team ?? null);
+    if (!existingProfile) {
+      const { data: createdProfile, error: createProfileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          username: fallbackUsername,
+          favorite_team: null,
+          avatar_url: null,
+        })
+        .select('username, favorite_team, avatar_url')
+        .single();
+
+      if (createProfileError) {
+        console.log('Error creating missing profile:', createProfileError.message);
+
+        setUsername(fallbackUsername);
+        setFavoriteTeam(null);
+        setAvatarUrl(null);
+      } else {
+        setUsername(createdProfile.username || fallbackUsername);
+        setFavoriteTeam(createdProfile.favorite_team ?? null);
+        setAvatarUrl(createdProfile.avatar_url ?? null);
+      }
+    } else {
+      setUsername(existingProfile.username || fallbackUsername);
+      setFavoriteTeam(existingProfile.favorite_team ?? null);
+      setAvatarUrl(existingProfile.avatar_url ?? null);
+    }
 
     const { data: predictions, error: predictionsError } = await supabase
       .from('predictions')
@@ -178,7 +206,11 @@ export default function ProfileScreen({ navigation }: any) {
 
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            )}
           </View>
 
           <View style={styles.profileInfo}>
@@ -196,6 +228,7 @@ export default function ProfileScreen({ navigation }: any) {
             navigation.navigate('EditProfile', {
               currentUsername: username,
               currentFavoriteTeam: favoriteTeam,
+              currentAvatarUrl: avatarUrl,
             })
           }
         >
@@ -247,7 +280,9 @@ export default function ProfileScreen({ navigation }: any) {
 
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Profilbilde</Text>
-            <Text style={styles.infoValue}>Initialer nå, bilde senere</Text>
+            <Text style={styles.infoValue}>
+              {avatarUrl ? 'Lastet opp' : 'Initialer'}
+            </Text>
           </View>
         </View>
 
@@ -322,6 +357,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: colors.white,

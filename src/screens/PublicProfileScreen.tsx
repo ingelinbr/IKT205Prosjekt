@@ -5,6 +5,7 @@ import {
   StyleSheet,
   View,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { supabase } from '../lib/supabase';
 
@@ -19,6 +20,8 @@ export default function PublicProfileScreen({ route }: any) {
   const { userId } = route.params;
 
   const [username, setUsername] = useState('Bruker');
+  const [favoriteTeam, setFavoriteTeam] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<PublicStats>({
     totalPoints: 0,
     totalPredictions: 0,
@@ -36,15 +39,17 @@ export default function PublicProfileScreen({ route }: any) {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('username')
+      .select('username, favorite_team, avatar_url')
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
       console.log('Error loading public profile:', profileError.message);
     }
 
     setUsername(profile?.username ?? 'Bruker');
+    setFavoriteTeam(profile?.favorite_team ?? null);
+    setAvatarUrl(profile?.avatar_url ?? null);
 
     const { data: predictions, error: predictionsError } = await supabase
       .from('predictions')
@@ -128,11 +133,17 @@ export default function PublicProfileScreen({ route }: any) {
 
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            )}
           </View>
 
           <Text style={styles.username}>{username}</Text>
-          <Text style={styles.favoriteTeam}>Favorittlag: Ikke valgt enda</Text>
+          <Text style={styles.favoriteTeam}>
+            Favorittlag: {favoriteTeam || 'Ikke valgt enda'}
+          </Text>
         </View>
 
         <View style={styles.pointsCard}>
@@ -154,6 +165,29 @@ export default function PublicProfileScreen({ route }: any) {
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{stats.correctPredictions}</Text>
             <Text style={styles.statLabel}>Riktige tips</Text>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>Offentlig info</Text>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Brukernavn</Text>
+            <Text style={styles.infoValue}>{username}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Favorittlag</Text>
+            <Text style={styles.infoValue}>
+              {favoriteTeam || 'Ikke valgt enda'}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Profilbilde</Text>
+            <Text style={styles.infoValue}>
+              {avatarUrl ? 'Lastet opp' : 'Initialer'}
+            </Text>
           </View>
         </View>
       </View>
@@ -205,17 +239,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 30,
+    width: 96,
+    height: 96,
+    borderRadius: 32,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     marginBottom: 12,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: colors.white,
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: '900',
   },
   username: {
@@ -256,6 +295,7 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     gap: 10,
+    marginBottom: 12,
   },
   statCard: {
     flex: 1,
@@ -275,5 +315,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.muted,
     fontWeight: '700',
+  },
+  infoCard: {
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.primary,
+    marginBottom: 12,
+  },
+  infoRow: {
+    backgroundColor: colors.softCard,
+    borderRadius: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  infoLabel: {
+    fontSize: 12,
+    color: colors.muted,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: colors.primary,
+    fontWeight: '800',
   },
 });

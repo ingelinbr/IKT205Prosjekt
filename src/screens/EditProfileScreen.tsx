@@ -10,18 +10,110 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
+  Image,
+  ScrollView,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../lib/supabase';
 import { PREMIER_LEAGUE_TEAMS } from '../services/premierLeagueTeams';
-import TeamLeagueScreen from '../screens/TeamLeagueScreen';
 
 export default function EditProfileScreen({ navigation, route }: any) {
   const [username, setUsername] = useState(route.params?.currentUsername ?? '');
   const [favoriteTeam, setFavoriteTeam] = useState(
     route.params?.currentFavoriteTeam ?? ''
   );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    route.params?.currentAvatarUrl ?? null
+  );
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [teamPickerOpen, setTeamPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  async function pickImage() {
+    Alert.alert('Profilbilde', 'Velg hvordan du vil legge til bilde.', [
+      {
+        text: 'Ta bilde',
+        onPress: takePhoto,
+      },
+      {
+        text: 'Velg fra bibliotek',
+        onPress: chooseFromLibrary,
+      },
+      {
+        text: 'Avbryt',
+        style: 'cancel',
+      },
+    ]);
+  }
+
+  async function takePhoto() {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Tillatelse mangler', 'Du må gi tilgang til kamera.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.75,
+    });
+
+    if (!result.canceled) {
+      setLocalImageUri(result.assets[0].uri);
+    }
+  }
+
+  async function chooseFromLibrary() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert('Tillatelse mangler', 'Du må gi tilgang til bilder.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.75,
+    });
+
+    if (!result.canceled) {
+      setLocalImageUri(result.assets[0].uri);
+    }
+  }
+
+  async function uploadAvatar(userId: string) {
+    if (!localImageUri) {
+      return avatarUrl;
+    }
+
+    const response = await fetch(localImageUri);
+    const arrayBuffer = await response.arrayBuffer();
+
+    const fileExt = localImageUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const cleanExt = fileExt === 'png' ? 'png' : 'jpg';
+    const contentType = cleanExt === 'png' ? 'image/png' : 'image/jpeg';
+
+    const filePath = `${userId}/avatar.${cleanExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, arrayBuffer, {
+        contentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw uploadError;
+    }
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+    return `${data.publicUrl}?updated=${Date.now()}`;
+  }
 
   async function saveProfile() {
     const trimmedUsername = username.trim();
@@ -34,36 +126,41 @@ export default function EditProfileScreen({ navigation, route }: any) {
 
     setSaving(true);
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    if (userError || !userData.user) {
-      setSaving(false);
-      Alert.alert('Feil', 'Du må være logget inn.');
-      return;
-    }
+      if (userError || !userData.user) {
+        throw new Error('Du må være logget inn.');
+      }
 
-    const { error } = await supabase
-      .from('profiles')
-      .upsert(
+      const userId = userData.user.id;
+      const uploadedAvatarUrl = await uploadAvatar(userId);
+
+      const { error } = await supabase.from('profiles').upsert(
         {
-          id: userData.user.id,
+          id: userId,
           username: trimmedUsername,
           favorite_team: trimmedFavoriteTeam || null,
+          avatar_url: uploadedAvatarUrl,
         },
         {
           onConflict: 'id',
         }
       );
 
-    setSaving(false);
+      if (error) {
+        throw error;
+      }
 
-    if (error) {
+      setAvatarUrl(uploadedAvatarUrl);
+      Alert.alert('Lagret', 'Profilen din er oppdatert.');
+      navigation.goBack();
+    } catch (error: any) {
+      console.log('Error saving profile:', error.message);
       Alert.alert('Feil', error.message);
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    Alert.alert('Lagret', 'Profilen din er oppdatert.');
-    navigation.goBack();
   }
 
   function getInitials() {
@@ -80,19 +177,28 @@ export default function EditProfileScreen({ navigation, route }: any) {
     return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   }
 
+  const previewImage = localImageUri || avatarUrl;
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.eyebrow}>Profil</Text>
         <Text style={styles.title}>Rediger profil</Text>
 
         <View style={styles.card}>
-          <View style={styles.avatarPreview}>
-            <Text style={styles.avatarText}>{getInitials()}</Text>
-          </View>
+          <Pressable style={styles.avatarPreview} onPress={pickImage}>
+            {previewImage ? (
+              <Image source={{ uri: previewImage }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials()}</Text>
+            )}
+          </Pressable>
 
           <Text style={styles.avatarHint}>
-            Profilbilde kommer når Supabase Storage er klart.
+            Trykk for å ta bilde eller velge fra bibliotek
           </Text>
         </View>
 
@@ -124,11 +230,6 @@ export default function EditProfileScreen({ navigation, route }: any) {
 
             <Text style={styles.dropdownArrow}>⌄</Text>
           </Pressable>
-
-          <Text style={styles.helperText}>
-            Senere kan favorittlaget brukes til å plassere deg automatisk i en
-            lag-liga.
-          </Text>
 
           <Pressable
             style={[styles.saveButton, saving && styles.disabledButton]}
@@ -174,8 +275,7 @@ export default function EditProfileScreen({ navigation, route }: any) {
                     <Text
                       style={[
                         styles.teamOptionText,
-                        favoriteTeam === item &&
-                          styles.selectedTeamOptionText,
+                        favoriteTeam === item && styles.selectedTeamOptionText,
                       ]}
                     >
                       {item}
@@ -196,7 +296,7 @@ export default function EditProfileScreen({ navigation, route }: any) {
             </Pressable>
           </Pressable>
         </Modal>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -243,18 +343,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatarPreview: {
-    width: 96,
-    height: 96,
-    borderRadius: 32,
+    width: 104,
+    height: 104,
+    borderRadius: 34,
     backgroundColor: colors.primary,
     alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     marginBottom: 12,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     color: colors.white,
-    fontSize: 32,
+    fontSize: 34,
     fontWeight: '900',
   },
   avatarHint: {
@@ -307,13 +412,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '900',
     marginLeft: 10,
-  },
-  helperText: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 17,
-    marginBottom: 14,
   },
   saveButton: {
     backgroundColor: colors.primary,

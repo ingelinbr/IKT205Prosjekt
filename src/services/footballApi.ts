@@ -15,8 +15,7 @@ async function fetchFromProxy(type: 'next' | 'previous' | 'all') {
 
     const res = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        apikey: SUPABASE_ANON_KEY,
+     apikey: SUPABASE_ANON_KEY,
       },
     });
 

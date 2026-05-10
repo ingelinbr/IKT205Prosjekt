@@ -133,9 +133,8 @@ export default function MatchesScreen({ navigation }: any) {
   function isLocked(match: any) {
     const matchTime = new Date(match.fixture.date).getTime();
     const now = Date.now();
-    const oneHour = 60 * 60 * 1000;
-
-    return now >= matchTime - oneHour;
+    const fifteenMinutes = 15 * 60 * 1000;
+    return now >= matchTime - fifteenMinutes;
   }
 
   function getPredictionLabel(prediction: Prediction) {

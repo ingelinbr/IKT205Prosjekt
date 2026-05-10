@@ -1,5 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 
 import LoginScreen from '../screens/LoginScreen';
 import MainTabs from './MainTabs';
@@ -46,7 +47,7 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const linking = {
-  prefixes: ['matchmind://'],
+  prefixes: ['exp://192.168.10.147:8081/--/', 'matchmind://'],
   config: {
     screens: {
       ResetPassword: 'reset-password',

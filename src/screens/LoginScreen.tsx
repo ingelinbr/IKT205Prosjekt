@@ -12,6 +12,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
 import { supabase } from '../lib/supabase';
+import * as Linking from 'expo-linking';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -147,8 +148,12 @@ async function handleForgotPassword() {
     return;
   }
 
+  const redirectUrl = 'exp://192.168.10.147:8081/--/reset-password';
+
+  console.log('Password reset redirect URL:', redirectUrl);
+
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-    redirectTo: 'matchmind://reset-password',
+    redirectTo: redirectUrl,
   });
 
   if (error) {

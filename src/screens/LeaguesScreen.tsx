@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   SafeAreaView,
   Text,
@@ -26,9 +27,11 @@ export default function LeaguesScreen({ navigation }: any) {
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     loadMyLeagues();
-  }, []);
+  }, [])
+);
 
   function generateJoinCode() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();

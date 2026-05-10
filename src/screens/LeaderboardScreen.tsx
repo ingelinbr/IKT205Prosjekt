@@ -7,6 +7,7 @@ import {
   View,
   ActivityIndicator,
   Pressable,
+  Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -14,6 +15,8 @@ import { supabase } from '../lib/supabase';
 type LeaderboardUser = {
   user_id: string;
   username: string;
+  favoriteTeam: string | null;
+  avatarUrl: string | null;
   totalPoints: number;
 };
 
@@ -26,7 +29,7 @@ export default function LeaderboardScreen({ navigation }: any) {
       loadLeaderboard();
 
       const channel = supabase
-        .channel('leaderboard-changes')
+        .channel('global-leaderboard-changes')
         .on(
           'postgres_changes',
           {
@@ -85,6 +88,7 @@ export default function LeaderboardScreen({ navigation }: any) {
         id: user.id,
         username: fallbackUsername,
         favorite_team: null,
+        avatar_url: null,
       });
 
       if (insertError) {
@@ -100,7 +104,7 @@ export default function LeaderboardScreen({ navigation }: any) {
 
     const { data: profiles, error: profileError } = await supabase
       .from('profiles')
-      .select('id, username');
+      .select('id, username, favorite_team, avatar_url');
 
     if (profileError) {
       console.log('Error loading profiles:', profileError.message);
@@ -129,6 +133,8 @@ export default function LeaderboardScreen({ navigation }: any) {
         ?.map((profile: any) => ({
           user_id: profile.id,
           username: profile.username ?? `Bruker ${profile.id.slice(0, 8)}`,
+          favoriteTeam: profile.favorite_team ?? null,
+          avatarUrl: profile.avatar_url ?? null,
           totalPoints: scores[profile.id] ?? 0,
         }))
         .sort((a, b) => b.totalPoints - a.totalPoints) ?? [];
@@ -137,149 +143,313 @@ export default function LeaderboardScreen({ navigation }: any) {
     setLoading(false);
   }
 
-  function getMedal(index: number) {
+  function getRank(index: number) {
     if (index === 0) return '🥇';
     if (index === 1) return '🥈';
     if (index === 2) return '🥉';
-    return `#${index + 1}`;
+    return `${index + 1}`;
+  }
+
+  function getInitials(name: string) {
+    const trimmed = name.trim();
+
+    if (!trimmed) return 'B';
+
+    const parts = trimmed.split(' ');
+
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  }
+
+  function renderUser({ item, index }: { item: LeaderboardUser; index: number }) {
+    const topThree = index < 3;
+
+    return (
+      <Pressable
+        style={[styles.userRow, topThree && styles.topUserRow]}
+        onPress={() =>
+          navigation.navigate('PublicProfile', {
+            userId: item.user_id,
+          })
+        }
+      >
+        <View style={styles.rankBox}>
+          <Text style={styles.rankText}>{getRank(index)}</Text>
+        </View>
+
+        <View style={styles.avatar}>
+          {item.avatarUrl ? (
+            <Image source={{ uri: item.avatarUrl }} style={styles.avatarImage} />
+          ) : (
+            <Text style={styles.avatarText}>{getInitials(item.username)}</Text>
+          )}
+        </View>
+
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{item.username}</Text>
+          <Text style={styles.userMeta}>
+            {item.favoriteTeam
+              ? `${item.favoriteTeam}-fan`
+              : 'Ikke valgt favorittlag'}
+          </Text>
+        </View>
+
+        <View style={styles.pointsPill}>
+          <Text style={styles.points}>{item.totalPoints}</Text>
+          <Text style={styles.pointsLabel}>poeng</Text>
+        </View>
+      </Pressable>
+    );
   }
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.eyebrow}>Global liga</Text>
-        <Text style={styles.title}>Global toppliste</Text>
-        <ActivityIndicator size="large" color="#5A2A40" />
+        <View style={styles.loadingContent}>
+          <Text style={styles.eyebrow}>Global liga</Text>
+          <Text style={styles.title}>Global toppliste</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Laster toppliste...</Text>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.eyebrow}>Global liga</Text>
-      <Text style={styles.title}>Global toppliste</Text>
-      <Text style={styles.subtitle}>
-        Alle brukere vises her, også de som ikke har fått poeng ennå.
-      </Text>
-
       <FlatList
         data={leaderboard}
         keyExtractor={(item) => item.user_id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <Text style={styles.empty}>Ingen brukere registrert enda.</Text>
+        ListHeaderComponent={
+          <View>
+            <Text style={styles.eyebrow}>Global liga</Text>
+            <Text style={styles.title}>Global toppliste</Text>
+
+            <View style={styles.heroCard}>
+              <Text style={styles.heroIcon}>🌍</Text>
+
+              <View style={styles.heroText}>
+                <Text style={styles.heroTitle}>Alle spillere</Text>
+                <Text style={styles.heroSubtitle}>
+                  Se hvem som leder totalt i Premier League Predictor.
+                </Text>
+              </View>
+
+              <View style={styles.countBadge}>
+                <Text style={styles.countText}>{leaderboard.length}</Text>
+                <Text style={styles.countLabel}>spillere</Text>
+              </View>
+            </View>
+
+            <Text style={styles.sectionTitle}>Rangering</Text>
+          </View>
         }
-        renderItem={({ item, index }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() =>
-              navigation.navigate('PublicProfile', {
-                userId: item.user_id,
-              })
-            }
-          >
-            <Text style={styles.rank}>{getMedal(index)}</Text>
-
-            <View style={styles.userInfo}>
-              <Text style={styles.username}>{item.username}</Text>
-              <Text style={styles.userSubtitle}>
-                {index === 0 ? 'Leder tabellen' : 'Premier League predictor'}
-              </Text>
-            </View>
-
-            <View style={styles.pointsBox}>
-              <Text style={styles.points}>{item.totalPoints}</Text>
-              <Text style={styles.pointsLabel}>poeng</Text>
-            </View>
-          </Pressable>
-        )}
+        ListEmptyComponent={
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Ingen spillere enda</Text>
+            <Text style={styles.emptyText}>
+              Når brukere får profil, vises de her.
+            </Text>
+          </View>
+        }
+        renderItem={renderUser}
       />
     </SafeAreaView>
   );
 }
 
+const colors = {
+  background: '#FFF0F5',
+  card: '#FFE4EC',
+  softCard: '#FFF7FA',
+  primary: '#5A2A40',
+  muted: '#A06A85',
+  border: '#F3BDD1',
+  white: '#FFFFFF',
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF0F5',
-    paddingHorizontal: 20,
-    paddingTop: 26,
+    backgroundColor: colors.background,
   },
   listContent: {
+    paddingHorizontal: 20,
+    paddingTop: 26,
     paddingBottom: 28,
+  },
+  loadingContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 26,
   },
   eyebrow: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#A06A85',
+    color: colors.muted,
     marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.7,
   },
   title: {
     fontSize: 30,
-    fontWeight: '800',
-    color: '#5A2A40',
-    marginBottom: 6,
+    fontWeight: '900',
+    color: colors.primary,
+    marginBottom: 16,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#A06A85',
-    lineHeight: 20,
+  loadingText: {
+    color: colors.muted,
+    marginTop: 12,
+    fontWeight: '700',
+  },
+  heroCard: {
+    backgroundColor: colors.primary,
+    borderRadius: 24,
+    padding: 16,
     marginBottom: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  card: {
-    backgroundColor: '#FFE4EC',
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+  heroIcon: {
+    fontSize: 30,
+    marginRight: 12,
+  },
+  heroText: {
+    flex: 1,
+  },
+  heroTitle: {
+    color: colors.white,
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 3,
+  },
+  heroSubtitle: {
+    color: colors.card,
+    fontSize: 12,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  countBadge: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    alignItems: 'center',
+    minWidth: 66,
+  },
+  countText: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  countLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.primary,
     marginBottom: 10,
+  },
+  userRow: {
+    backgroundColor: colors.softCard,
+    borderRadius: 18,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    marginBottom: 9,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#F3BDD1',
+    borderColor: colors.border,
   },
-  rank: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#5A2A40',
-    width: 52,
+  topUserRow: {
+    backgroundColor: colors.card,
+    borderColor: colors.primary,
+  },
+  rankBox: {
+    width: 34,
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  rankText: {
+    color: colors.primary,
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  avatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginRight: 11,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
   },
   userInfo: {
     flex: 1,
   },
   username: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#5A2A40',
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '900',
   },
-  userSubtitle: {
-    marginTop: 3,
+  userMeta: {
+    color: colors.muted,
     fontSize: 12,
-    color: '#A06A85',
-    fontWeight: '600',
+    fontWeight: '700',
+    marginTop: 2,
   },
-  pointsBox: {
-    backgroundColor: '#5A2A40',
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 13,
+  pointsPill: {
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     alignItems: 'center',
-    minWidth: 68,
+    minWidth: 62,
   },
   points: {
-    fontSize: 21,
+    color: colors.white,
+    fontSize: 19,
     fontWeight: '900',
-    color: '#FFFFFF',
   },
   pointsLabel: {
-    fontSize: 11,
-    color: '#FFE4EC',
+    color: colors.card,
+    fontSize: 10,
+    fontWeight: '800',
   },
-  empty: {
-    color: '#5A2A40',
-    fontSize: 15,
-    fontWeight: '700',
+  emptyCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emptyTitle: {
+    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 6,
+  },
+  emptyText: {
+    color: colors.muted,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

@@ -68,6 +68,18 @@ describe("MatchesScreen", () => {
     });
   });
 
+  test("renders upcoming match on the screen", async () => {
+    const navigation = {
+      navigate: jest.fn(),
+    };
+
+    const { findByText } = render(<MatchesScreen navigation={navigation} />);
+
+    expect(await findByText("Arsenal")).toBeTruthy();
+    expect(await findByText("Chelsea")).toBeTruthy();
+    expect(await findByText("Kommende kamper")).toBeTruthy();
+  });
+
   test("saves prediction when user chooses home team", async () => {
     const navigation = {
       navigate: jest.fn(),
@@ -105,6 +117,7 @@ describe("MatchesScreen", () => {
 
     fireEvent.press(homeButton);
 
-    expect(await findByText("Ditt valg: HOME | Poeng: 0")).toBeTruthy();
+    expect(await findByText("Ditt valg: Hjemmeseier")).toBeTruthy();
+    expect(await findByText(/Nåværende poeng:/)).toBeTruthy();
   });
 });

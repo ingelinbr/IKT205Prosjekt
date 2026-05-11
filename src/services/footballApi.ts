@@ -1,28 +1,36 @@
 const PROXY_URL =
   'https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy';
 
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-async function fetchFromProxy(type: 'next' | 'previous' | 'all') {
+async function fetchFromProxy(
+  type: 'next' | 'previous' | 'all' | 'live'
+) {
   try {
+    const SUPABASE_ANON_KEY =
+      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
     if (!SUPABASE_ANON_KEY) {
       console.log('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY');
       return [];
     }
 
     const url = `${PROXY_URL}?type=${type}`;
+
     console.log('Fetching football data from:', url);
 
     const res = await fetch(url, {
       headers: {
-     apikey: SUPABASE_ANON_KEY,
+        apikey: SUPABASE_ANON_KEY,
       },
     });
 
     console.log(`Football proxy status (${type}):`, res.status);
 
     const text = await res.text();
-    console.log(`Football proxy raw text (${type}):`, text.slice(0, 500));
+
+    console.log(
+      `Football proxy raw text (${type}):`,
+      text.slice(0, 500)
+    );
 
     let data;
 
@@ -64,4 +72,8 @@ export const fetchPreviousMatches = async () => {
 
 export const fetchAllSeasonMatches = async () => {
   return fetchFromProxy('all');
+};
+
+export const fetchLiveMatches = async () => {
+  return fetchFromProxy('live');
 };

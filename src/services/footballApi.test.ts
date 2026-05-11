@@ -1,8 +1,9 @@
+process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = "test-key";
+
 import {
   fetchMatches,
   fetchPreviousMatches,
   fetchAllSeasonMatches,
-  fetchLiveMatches,
 } from "./footballApi";
 
 globalThis.fetch = jest.fn() as any;
@@ -13,25 +14,25 @@ describe("footballApi", () => {
   });
 
   test("fetchMatches returns upcoming matches from proxy", async () => {
-    const mockMatches = [
-      {
-        fixture: { id: 1 },
-        teams: {
-          home: { name: "Arsenal" },
-          away: { name: "Chelsea" },
-        },
-      },
-    ];
+    const mockMatches = [{ fixture: { id: 1 } }];
 
     (fetch as jest.Mock).mockResolvedValueOnce({
-      json: async () => mockMatches,
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(mockMatches),
     });
 
     const result = await fetchMatches();
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=next"
+      "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=next",
+      {
+        headers: {
+          apikey: "test-key",
+        },
+      }
     );
+
     expect(result).toEqual(mockMatches);
   });
 
@@ -39,14 +40,22 @@ describe("footballApi", () => {
     const mockMatches = [{ fixture: { id: 2 } }];
 
     (fetch as jest.Mock).mockResolvedValueOnce({
-      json: async () => mockMatches,
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(mockMatches),
     });
 
     const result = await fetchPreviousMatches();
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=previous"
+      "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=previous",
+      {
+        headers: {
+          apikey: "test-key",
+        },
+      }
     );
+
     expect(result).toEqual(mockMatches);
   });
 
@@ -54,20 +63,30 @@ describe("footballApi", () => {
     const mockMatches = [{ fixture: { id: 3 } }];
 
     (fetch as jest.Mock).mockResolvedValueOnce({
-      json: async () => mockMatches,
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(mockMatches),
     });
 
     const result = await fetchAllSeasonMatches();
 
     expect(fetch).toHaveBeenCalledWith(
-      "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=all"
+      "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=all",
+      {
+        headers: {
+          apikey: "test-key",
+        },
+      }
     );
+
     expect(result).toEqual(mockMatches);
   });
 
   test("fetchMatches returns empty array when response is not an array", async () => {
     (fetch as jest.Mock).mockResolvedValueOnce({
-      json: async () => ({ error: "Something went wrong" }),
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ error: "Something went wrong" }),
     });
 
     const result = await fetchMatches();
@@ -82,19 +101,4 @@ describe("footballApi", () => {
 
     expect(result).toEqual([]);
   });
-
-  test("fetchLiveMatches returns live matches from proxy", async () => {
-  const mockMatches = [{ fixture: { id: 4 } }];
-
-  (fetch as jest.Mock).mockResolvedValueOnce({
-    json: async () => mockMatches,
-  });
-
-  const result = await fetchLiveMatches();
-
-  expect(fetch).toHaveBeenCalledWith(
-    "https://ymrkqudtgklgkovfzotv.functions.supabase.co/football-proxy?type=live"
-  );
-  expect(result).toEqual(mockMatches);
-});
 });

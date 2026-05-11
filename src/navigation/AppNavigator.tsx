@@ -1,5 +1,6 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import * as Linking from 'expo-linking';
 
 import LoginScreen from '../screens/LoginScreen';
 import MainTabs from './MainTabs';
@@ -13,6 +14,7 @@ import LeaderboardScreen from '../screens/LeaderboardScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import PublicProfileScreen from '../screens/PublicProfileScreen';
 import TeamLeagueScreen from '../screens/TeamLeagueScreen';
+import ResetPasswordScreen from '../screens/ResetPasswordScreen';
 
 export type RootStackParamList = {
   AuthGate: undefined;
@@ -29,23 +31,33 @@ export type RootStackParamList = {
     joinCode: string;
   };
   EditProfile: {
-  currentUsername: string;
-  currentFavoriteTeam: string | null;
-  currentAvatarUrl: string | null;
-};
+    currentUsername: string;
+    currentFavoriteTeam: string | null;
+    currentAvatarUrl: string | null;
+  };
   PublicProfile: {
     userId: string;
   };
   TeamLeague: {
     teamName: string;
   };
+  ResetPassword: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const linking = {
+  prefixes: ['exp://192.168.10.147:8081/--/', 'matchmind://'],
+  config: {
+    screens: {
+      ResetPassword: 'reset-password',
+    },
+  },
+};
+
 export default function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator
         initialRouteName="AuthGate"
         screenOptions={{
@@ -126,6 +138,12 @@ export default function AppNavigator() {
           name="TeamLeague"
           component={TeamLeagueScreen}
           options={{ title: 'Favorittlag-liga' }}
+        />
+
+        <Stack.Screen
+          name="ResetPassword"
+          component={ResetPasswordScreen}
+          options={{ title: 'Nytt passord' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/AppNavigator';
-import { signIn, signUp } from '../services/authService';
+import { supabase } from '../lib/supabase';
+import * as Linking from 'expo-linking';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -21,63 +22,150 @@ export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignIn = async () => {
-  const trimmedEmail = email.trim();
-  const trimmedPassword = password.trim();
+  async function ensureProfileExists(user: any) {
+    const fallbackUsername =
+      user.user_metadata?.username || user.email?.split('@')[0] || 'Bruker';
 
-  if (!trimmedEmail || !trimmedPassword) {
-    Alert.alert('Feil', 'Fyll inn både e-post og passord.');
+    const { data: existingProfile, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (checkError) {
+      console.log('Error checking profile after login:', checkError.message);
+      return;
+    }
+
+    if (existingProfile) {
+      return;
+    }
+
+    const { error: insertError } = await supabase.from('profiles').insert({
+      id: user.id,
+      username: fallbackUsername,
+      favorite_team: null,
+      avatar_url: null,
+    });
+
+    if (insertError) {
+      console.log('Error creating profile after login:', insertError.message);
+    }
+  }
+
+  async function handleSignIn() {
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      Alert.alert('Feil', 'Fyll inn både e-post og passord.');
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: trimmedEmail,
+      password: trimmedPassword,
+    });
+
+    if (error) {
+      Alert.alert('Innlogging feilet', error.message);
+      return;
+    }
+
+    if (!data.user) {
+      Alert.alert('Innlogging feilet', 'Fant ikke bruker.');
+      return;
+    }
+
+    await ensureProfileExists(data.user);
+
+    const displayName =
+      data.user.user_metadata?.username ||
+      data.user.email?.split('@')[0] ||
+      'Bruker';
+
+    navigation.replace('CreatePin', { username: displayName });
+  }
+
+  async function handleSignUp() {
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedUsername || !trimmedEmail || !trimmedPassword) {
+      Alert.alert('Feil', 'Fyll inn fornavn, e-post og passord.');
+      return;
+    }
+
+    if (trimmedPassword.length < 6) {
+      Alert.alert('Feil', 'Passord må være minst 6 tegn.');
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: trimmedEmail,
+      password: trimmedPassword,
+      options: {
+        data: {
+          username: trimmedUsername,
+        },
+      },
+    });
+
+    if (error) {
+      Alert.alert('Registrering feilet', error.message);
+      return;
+    }
+
+    if (data.session?.user) {
+      await ensureProfileExists(data.session.user);
+
+      Alert.alert(
+        'Bruker opprettet',
+        'Brukeren er opprettet. Nå kan du lage PIN.'
+      );
+
+      navigation.replace('CreatePin', { username: trimmedUsername });
+      return;
+    }
+
+    Alert.alert(
+      'Bruker opprettet',
+      'Sjekk e-posten din og bekreft brukeren før du logger inn.'
+    );
+
+    setUsername('');
+    setEmail('');
+    setPassword('');
+    setIsRegisterMode(false);
+  }
+
+async function handleForgotPassword() {
+  const trimmedEmail = email.trim();
+
+  if (!trimmedEmail) {
+    Alert.alert('Feil', 'Skriv inn e-postadressen din først.');
     return;
   }
 
-  const { data, error } = await signIn(trimmedEmail, trimmedPassword);
+  const redirectUrl = 'exp://192.168.10.147:8081/--/reset-password';
+
+  console.log('Password reset redirect URL:', redirectUrl);
+
+  const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+    redirectTo: redirectUrl,
+  });
 
   if (error) {
-    Alert.alert('Innlogging feilet', error.message);
-    return;
-  }
-
-  const displayName = data.user?.user_metadata?.username || 'Bruker';
-
-  navigation.replace('CreatePin', { username: displayName });
-};
-
-  const handleSignUp = async () => {
-  const trimmedUsername = username.trim();
-  const trimmedEmail = email.trim();
-  const trimmedPassword = password.trim();
-
-  if (!trimmedUsername || !trimmedEmail || !trimmedPassword) {
-    Alert.alert('Feil', 'Fyll inn fornavn, e-post og passord.');
-    return;
-  }
-
-  if (trimmedPassword.length < 6) {
-    Alert.alert('Feil', 'Passord må være minst 6 tegn.');
-    return;
-  }
-
-  const { error } = await signUp(
-    trimmedEmail,
-    trimmedPassword,
-    trimmedUsername
-  );
-
-  if (error) {
-    Alert.alert('Registrering feilet', error.message);
+    Alert.alert('Feil', error.message);
     return;
   }
 
   Alert.alert(
-    'Bruker opprettet',
-    'Sjekk e-posten din og logg inn. Etter innlogging lager du PIN.'
+    'E-post sendt',
+    'Hvis e-posten finnes, får du en lenke for å tilbakestille passordet.'
   );
-
-  setUsername('');
-  setEmail('');
-  setPassword('');
-  setIsRegisterMode(false);
-};
+}
 
   return (
     <KeyboardAvoidingView
@@ -119,6 +207,15 @@ export default function LoginScreen({ navigation }: Props) {
           secureTextEntry
         />
 
+        {!isRegisterMode && (
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={handleForgotPassword}
+          >
+            <Text style={styles.forgotButtonText}>Glemt passord?</Text>
+          </TouchableOpacity>
+        )}
+
         {isRegisterMode ? (
           <TouchableOpacity style={styles.button} onPress={handleSignUp}>
             <Text style={styles.buttonText}>Opprett bruker</Text>
@@ -142,7 +239,7 @@ export default function LoginScreen({ navigation }: Props) {
 
         <Text style={styles.note}>
           {isRegisterMode
-            ? 'Etter registrering lager du en PIN-kode.'
+            ? 'Etter registrering bekrefter du e-post før innlogging.'
             : 'Bruk e-post og passord for å logge inn.'}
         </Text>
       </View>
@@ -190,6 +287,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 14,
     color: '#5A2A40',
+  },
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginTop: -4,
+    marginBottom: 12,
+  },
+  forgotButtonText: {
+    color: '#5A2A40',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   button: {
     backgroundColor: '#FF6FA5',

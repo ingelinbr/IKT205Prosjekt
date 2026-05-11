@@ -18,7 +18,7 @@
     "expo": "~54.0.34",
     "expo-crypto": "~15.0.9",
     "expo-image-picker": "~17.0.11",
-    "expo-notifications": "~0.32.17",
+    "expo-linking": "~8.0.12",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
     "jest": "~29.7.0",

@@ -38,7 +38,6 @@ export default function TeamLeagueScreen({ navigation, route }: any) {
       .eq('favorite_team', teamName);
 
     if (profileError) {
-      console.log('Error loading team profiles:', profileError.message);
       setLoading(false);
       return;
     }
@@ -57,7 +56,6 @@ export default function TeamLeagueScreen({ navigation, route }: any) {
       .in('user_id', userIds);
 
     if (predictionError) {
-      console.log('Error loading team league points:', predictionError.message);
       setLoading(false);
       return;
     }

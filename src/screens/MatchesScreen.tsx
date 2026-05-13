@@ -73,7 +73,6 @@ export default function MatchesScreen({ navigation }: any) {
       .eq("match_id", matchId);
 
     if (error) {
-      console.log("Error updating points:", error.message);
     }
 
     return calculatedPoints;
@@ -84,19 +83,12 @@ export default function MatchesScreen({ navigation }: any) {
 
     const data = await fetchMatches();
 
-    console.log("MATCHES FROM fetchMatches:", data.length);
-    console.log(
-      "STATUSES:",
-      data.map((m: any) => m.fixture?.status?.short)
-    );
-
     const upcomingMatches = data.filter(isPredictableMatch);
     setMatches(upcomingMatches);
 
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
-      console.log("No logged in user:", userError?.message);
       setLoading(false);
       return;
     }
@@ -111,7 +103,6 @@ export default function MatchesScreen({ navigation }: any) {
         .in("match_id", matchIds);
 
       if (error) {
-        console.log("Error loading predictions:", error.message);
       } else if (predictionRows) {
         const predictionMap: Record<number, Prediction> = {};
         const pointsMap: Record<number, number> = {};
@@ -214,7 +205,6 @@ export default function MatchesScreen({ navigation }: any) {
         [matchId]: oldPoints ?? 0,
       }));
 
-      console.log("Error saving prediction:", error.message);
       Alert.alert("Feil", `Kunne ikke lagre prediction: ${error.message}`);
     }
   }

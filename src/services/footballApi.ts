@@ -9,13 +9,10 @@ async function fetchFromProxy(
       process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!SUPABASE_ANON_KEY) {
-      console.log('Missing EXPO_PUBLIC_SUPABASE_ANON_KEY');
       return [];
     }
 
     const url = `${PROXY_URL}?type=${type}`;
-
-    console.log('Fetching football data from:', url);
 
     const res = await fetch(url, {
       headers: {
@@ -23,31 +20,17 @@ async function fetchFromProxy(
       },
     });
 
-    console.log(`Football proxy status (${type}):`, res.status);
-
     const text = await res.text();
-
-    console.log(
-      `Football proxy raw text (${type}):`,
-      text.slice(0, 500)
-    );
 
     let data;
 
     try {
       data = JSON.parse(text);
     } catch {
-      console.log(`Football proxy returned non-JSON (${type})`);
       return [];
     }
 
-    console.log(
-      `Football proxy response (${type}):`,
-      Array.isArray(data) ? `${data.length} matches` : data
-    );
-
     if (!res.ok) {
-      console.log(`Football proxy error (${type}):`, data);
       return [];
     }
 

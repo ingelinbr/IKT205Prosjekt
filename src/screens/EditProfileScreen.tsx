@@ -156,7 +156,6 @@ export default function EditProfileScreen({ navigation, route }: any) {
       Alert.alert('Lagret', 'Profilen din er oppdatert.');
       navigation.goBack();
     } catch (error: any) {
-      console.log('Error saving profile:', error.message);
       Alert.alert('Feil', error.message);
     } finally {
       setSaving(false);

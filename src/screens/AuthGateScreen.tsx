@@ -19,7 +19,6 @@ export default function AuthGateScreen({ navigation }: any) {
       .maybeSingle();
 
     if (checkError) {
-      console.log('Error checking profile:', checkError.message);
       return;
     }
 
@@ -34,7 +33,6 @@ export default function AuthGateScreen({ navigation }: any) {
     });
 
     if (insertError) {
-      console.log('Error creating profile:', insertError.message);
     }
   }
 
@@ -46,7 +44,6 @@ export default function AuthGateScreen({ navigation }: any) {
       } = await supabase.auth.getSession();
 
       if (error) {
-        console.log('Error getting session:', error.message);
         navigation.replace('Login');
         return;
       }

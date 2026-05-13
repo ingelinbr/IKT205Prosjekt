@@ -33,7 +33,6 @@ export default function LoginScreen({ navigation }: Props) {
       .maybeSingle();
 
     if (checkError) {
-      console.log('Error checking profile after login:', checkError.message);
       return;
     }
 
@@ -49,7 +48,6 @@ export default function LoginScreen({ navigation }: Props) {
     });
 
     if (insertError) {
-      console.log('Error creating profile after login:', insertError.message);
     }
   }
 
@@ -149,8 +147,6 @@ async function handleForgotPassword() {
   }
 
   const redirectUrl = 'exp://192.168.10.147:8081/--/reset-password';
-
-  console.log('Password reset redirect URL:', redirectUrl);
 
   const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
     redirectTo: redirectUrl,

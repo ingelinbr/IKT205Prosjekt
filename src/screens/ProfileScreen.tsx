@@ -45,7 +45,6 @@ export default function ProfileScreen({ navigation }: any) {
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
-      console.log('Error loading user:', userError?.message);
       setLoading(false);
       return;
     }
@@ -63,7 +62,6 @@ export default function ProfileScreen({ navigation }: any) {
       .maybeSingle();
 
     if (profileError) {
-      console.log('Error checking profile:', profileError.message);
     }
 
     if (!existingProfile) {
@@ -79,8 +77,6 @@ export default function ProfileScreen({ navigation }: any) {
         .single();
 
       if (createProfileError) {
-        console.log('Error creating missing profile:', createProfileError.message);
-
         setUsername(fallbackUsername);
         setFavoriteTeam(null);
         setAvatarUrl(null);
@@ -100,7 +96,6 @@ export default function ProfileScreen({ navigation }: any) {
       .select('user_id, points');
 
     if (predictionsError) {
-      console.log('Error loading profile stats:', predictionsError.message);
       setLoading(false);
       return;
     }

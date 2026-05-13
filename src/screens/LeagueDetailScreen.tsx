@@ -109,7 +109,6 @@ export default function LeagueDetailScreen({ navigation, route }: any) {
       .maybeSingle();
 
     if (leagueError) {
-      console.log('Error loading league:', leagueError.message);
     }
 
     if (league) {
@@ -125,7 +124,6 @@ export default function LeagueDetailScreen({ navigation, route }: any) {
       .eq('league_id', leagueId);
 
     if (memberError) {
-      console.log('Error loading members:', memberError.message);
       setLoading(false);
       return;
     }
@@ -144,7 +142,6 @@ export default function LeagueDetailScreen({ navigation, route }: any) {
       .in('user_id', userIds);
 
     if (predictionError) {
-      console.log('Error loading predictions:', predictionError.message);
       setLoading(false);
       return;
     }
@@ -155,7 +152,6 @@ export default function LeagueDetailScreen({ navigation, route }: any) {
       .in('id', userIds);
 
     if (profileError) {
-      console.log('Error loading profiles:', profileError.message);
     }
 
     const profileMap: Record<

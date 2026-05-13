@@ -44,7 +44,6 @@ export default function PublicProfileScreen({ route }: any) {
       .maybeSingle();
 
     if (profileError) {
-      console.log('Error loading public profile:', profileError.message);
     }
 
     setUsername(profile?.username ?? 'Bruker');
@@ -56,7 +55,6 @@ export default function PublicProfileScreen({ route }: any) {
       .select('user_id, points');
 
     if (predictionsError) {
-      console.log('Error loading public stats:', predictionsError.message);
       setLoading(false);
       return;
     }

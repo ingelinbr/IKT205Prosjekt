@@ -48,7 +48,6 @@ useFocusEffect(
       .maybeSingle();
 
     if (checkError) {
-      console.log('Error checking profile:', checkError.message);
       return null;
     }
 
@@ -64,7 +63,6 @@ useFocusEffect(
         .single();
 
       if (insertError) {
-        console.log('Error creating profile:', insertError.message);
         return null;
       }
 

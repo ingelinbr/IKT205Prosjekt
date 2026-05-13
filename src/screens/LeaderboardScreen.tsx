@@ -64,7 +64,6 @@ export default function LeaderboardScreen({ navigation }: any) {
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
     if (userError || !userData.user) {
-      console.log('Error loading current user:', userError?.message);
       return;
     }
 
@@ -79,7 +78,6 @@ export default function LeaderboardScreen({ navigation }: any) {
       .maybeSingle();
 
     if (checkError) {
-      console.log('Error checking current profile:', checkError.message);
       return;
     }
 
@@ -92,7 +90,6 @@ export default function LeaderboardScreen({ navigation }: any) {
       });
 
       if (insertError) {
-        console.log('Error creating current profile:', insertError.message);
       }
     }
   }
@@ -107,7 +104,6 @@ export default function LeaderboardScreen({ navigation }: any) {
       .select('id, username, favorite_team, avatar_url');
 
     if (profileError) {
-      console.log('Error loading profiles:', profileError.message);
       setLoading(false);
       return;
     }
@@ -117,7 +113,6 @@ export default function LeaderboardScreen({ navigation }: any) {
       .select('user_id, points');
 
     if (predictionError) {
-      console.log('Error loading leaderboard:', predictionError.message);
       setLoading(false);
       return;
     }

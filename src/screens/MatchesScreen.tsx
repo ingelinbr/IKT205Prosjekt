@@ -307,7 +307,7 @@ export default function MatchesScreen({ navigation }: any) {
 
               {locked && (
                 <Text style={styles.lockedText}>
-                  Tipping stenger 1 time før kampstart.
+                  Tipping stenger 15 min før kampstart.
                 </Text>
               )}
 

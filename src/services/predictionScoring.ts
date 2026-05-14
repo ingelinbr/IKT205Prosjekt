@@ -82,6 +82,14 @@ export async function updateFinishedMatchPointsForUser(
 
     const newPoints = calculatePoints(row.prediction, result);
 
+    console.log('SCORING DEBUG:', {
+      matchId: row.match_id,
+      prediction: row.prediction,
+      result,
+      oldPoints: row.points,
+      newPoints,
+    });
+
     if ((row.points ?? 0) === newPoints) continue;
 
     const { error: updateError } = await supabase

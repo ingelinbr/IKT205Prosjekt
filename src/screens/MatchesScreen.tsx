@@ -142,7 +142,7 @@ export default function MatchesScreen({ navigation }: any) {
     if (isLocked(match)) {
       Alert.alert(
         "For sent",
-        "Du kan ikke tippe mindre enn 1 time før kampstart."
+        "Du kan ikke tippe mindre enn 15 minutter før kampstart."
       );
       return;
     }
